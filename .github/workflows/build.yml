@@ -102,6 +102,7 @@ jobs:
           Copy-Item build/Release/kadrolov-capture.exe stage/
           windeployqt --release --no-translations stage/kadrolov.exe
           Copy-Item README.md,LICENSE,THIRD_PARTY.md stage/
+          Copy-Item licenses stage/licenses -Recurse
           Compress-Archive -Path stage/* -DestinationPath kadrolov-windows-${{ matrix.arch }}.zip
       - uses: actions/upload-artifact@v4
         with:
