@@ -1,0 +1,34 @@
+name: Linux amd64 installer fallback
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  debian-amd64:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v0.1.0
+      - name: Build and test in clean Debian environment
+        run: >-
+          docker run --rm -v "$PWD:/src" -w /src debian:bookworm
+          bash -ec 'apt-get -o Acquire::Retries=2 -o Acquire::http::Timeout=30 update &&
+          apt-get -o Acquire::Retries=2 -o Acquire::http::Timeout=30 install -y --no-install-recommends build-essential dpkg-dev cmake ninja-build qt6-base-dev qt6-image-formats-plugins libx11-dev ffmpeg xvfb xauth python3-dbus python3-gi gir1.2-gstreamer-1.0 &&
+          cmake -S . -B build-rescue -G Ninja -DCMAKE_BUILD_TYPE=Release &&
+          cmake --build build-rescue -j2 &&
+          xvfb-run -a ctest --test-dir build-rescue --output-on-failure &&
+          python3 -m unittest discover -s native/linux/tests -v &&
+          cmake --install build-rescue --prefix stage-rescue &&
+          tar czf kadrolov-linux-x86_64.tar.gz -C stage-rescue . &&
+          scripts/package-linux.sh build-rescue amd64 dist 6 &&
+          apt-get install -y --no-install-recommends ./dist/*.deb &&
+          dpkg-query -W kadrolov &&
+          dpkg --remove kadrolov'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kadrolov-linux-x86_64
+          path: |
+            kadrolov-linux-x86_64.tar.gz
+            dist/*.deb
