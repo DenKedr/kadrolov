@@ -90,5 +90,5 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/desktop/tests/lifecycle_test.cpp" AND KADROLOV_BU
   target_include_directories(lifecycle_test PRIVATE desktop/src ${X11_INCLUDE_DIR})
   target_compile_definitions(lifecycle_test PRIVATE ${lifecycle_definitions})
   target_link_libraries(lifecycle_test PRIVATE ${lifecycle_links} Qt${QT_VERSION_MAJOR}::Test)
-  add_test(NAME lifecycle COMMAND lifecycle_test)
+  add_test(NAME lifecycle COMMAND lifecycle_test -o lifecycle-results.xml,xml -o -,txt)
 endif()
