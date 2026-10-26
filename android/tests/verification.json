@@ -3,7 +3,7 @@
   "runtime_device_tested": false,
   "apk": "android/app/build/outputs/apk/debug/app-debug.apk",
   "apk_bytes": 35540911,
-  "apk_sha256": "bb5b41b500cc4367859831f78cbf5dfaf243d43d8b402e797f96c10748d7558f",
+  "apk_sha256": "7486e3a94e2b92de16b4f51126cab16fc47b410411f734f411f256c9eb33852f",
   "abis": [
     "arm64-v8a",
     "armeabi-v7a",

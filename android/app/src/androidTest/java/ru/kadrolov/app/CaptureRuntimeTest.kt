@@ -46,7 +46,17 @@ class CaptureRuntimeTest {
       runCatching { device.takeScreenshot(File(dir, "screen.png")) }
       runCatching { device.dumpWindowHierarchy(File(dir, "window.xml")) }
       runCatching { File(dir, "logcat.txt").writeText(device.executeShellCommand("logcat -d -t 1500")) }
-      File(dir, "failure.txt").writeText(error.stackTraceToString())
+      try {
+        File(dir, "failure.txt").writeText(error.stackTraceToString())
+      } finally {
+        // UTP uninstalls the APK after instrumentation, deleting its external files.
+        // Preserve failure evidence under shell-owned emulator storage before uninstall.
+        val durable = "/data/local/tmp/kadrolov-runtime/${description.methodName}"
+        runCatching { device.executeShellCommand("mkdir -p $durable") }
+        runCatching { device.executeShellCommand("cp -R ${dir.absolutePath}/. $durable/") }
+        runCatching { device.executeShellCommand("screencap -p $durable/shell-screen.png") }
+        runCatching { device.executeShellCommand("logcat -d -t 2000 -f $durable/shell-logcat.txt") }
+      }
     }
   }
 
@@ -55,6 +65,9 @@ class CaptureRuntimeTest {
       Build.MODEL.contains("sdk_gphone") || Build.HARDWARE in listOf("ranchu", "goldfish"))
     assumeTrue("Projection selectors target API 35", Build.VERSION.SDK_INT == 35)
     assumeTrue("System consent must be English", Locale.getDefault().language == "en")
+    device.wakeUp()
+    device.executeShellCommand("wm dismiss-keyguard")
+    device.pressHome()
     originalUris = historyUris()
     initialized = true
     // Configure owned emulator state through the application API; all capture actions use the UI.
@@ -64,7 +77,7 @@ class CaptureRuntimeTest {
     instrumentation.uiAutomation.grantRuntimePermission(context.packageName, Manifest.permission.POST_NOTIFICATIONS)
     context.startActivity(Intent(context, MainActivity::class.java)
       .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK))
-    visible(By.text("Снимок"))
+    visible(label("Снимок"))
   }
 
   @After fun cleanup() {
@@ -79,16 +92,16 @@ class CaptureRuntimeTest {
   }
 
   @Test fun screenshotOpensEditorAndSavesDecodableImage() {
-    visible(By.text("Снимок")).click()
+    visible(label("Снимок")).click()
     approveWholeScreen()
     await("Screenshot frame captured", 20_000) { CaptureState.message.startsWith("Снимок готов") }
     if (!device.hasObject(By.desc("Изображение для пометок и выбора области"))) {
       device.openNotification()
-      visible(By.text("Снимок готов")).click()
+      visible(label("Снимок готов")).click()
     }
     visible(By.desc("Изображение для пометок и выбора области"))
-    visible(By.text("Сохранить").clazz("android.widget.Button")).click()
-    visible(By.text("Снимок сохранён"))
+    visible(label("Сохранить").clazz("android.widget.Button")).click()
+    visible(label("Снимок сохранён"))
     val uri = newMedia("image/")
     val bitmap = context.contentResolver.openInputStream(uri).use { BitmapFactory.decodeStream(it) }
     assertNotNull("Saved screenshot must decode", bitmap)
@@ -102,21 +115,21 @@ class CaptureRuntimeTest {
   }
 
   @Test fun silentRecordingPausesResumesAndProducesPlayableMp4() {
-    visible(By.text("Запись")).click()
-    visible(By.text("Выбрать источник")).click()
+    visible(label("Запись")).click()
+    visible(label("Выбрать источник")).click()
     approveWholeScreen()
     await("Recording service starts", 20_000) { CaptureState.state == "recording" }
     // Production backgrounds its task when projection begins. Reopen its UI.
     context.startActivity(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     visible(By.text(Pattern.compile("Идёт запись · .*")))
     await("At least two seconds of encoded activity", 20_000) { CaptureState.elapsedMs >= 2_000 }
-    visible(By.text("Пауза").clazz("android.widget.Button")).click()
+    visible(label("Пауза").clazz("android.widget.Button")).click()
     visible(By.text(Pattern.compile("Пауза · .*")))
-    visible(By.text("Продолжить").clazz("android.widget.Button")).click()
+    visible(label("Продолжить").clazz("android.widget.Button")).click()
     visible(By.text(Pattern.compile("Идёт запись · .*")))
     await("Recording progresses after resume", 20_000) { CaptureState.elapsedMs >= 4_000 }
-    visible(By.text("Стоп").clazz("android.widget.Button")).click()
-    visible(By.text("Видео сохранено"))
+    visible(label("Стоп").clazz("android.widget.Button")).click()
+    visible(label("Видео сохранено"))
     val uri = newMedia("video/")
     val extractor = MediaExtractor()
     try {
@@ -162,10 +175,14 @@ class CaptureRuntimeTest {
     // Android 15 defaults to a single app; explicitly select the full display via system UI.
     val spinner = visible(By.res("com.android.systemui", "screen_share_mode_spinner"))
     spinner.click()
-    visible(By.text("Entire screen")).click()
-    visible(By.text(Pattern.compile("Start (now|recording|sharing)"))).click()
+    visible(label("Entire screen")).click()
+    visible(By.text(Pattern.compile("Start (now|recording|sharing)", Pattern.CASE_INSENSITIVE or Pattern.UNICODE_CASE))).click()
     assertTrue("System consent closes", device.wait(Until.gone(By.res("com.android.systemui", "screen_share_mode_spinner")), 10_000))
   }
+
+  // Material Button textAllCaps changes accessibility text; preserve exact labels but ignore case.
+  private fun label(text: String): BySelector = By.text(Pattern.compile(
+    Pattern.quote(text), Pattern.CASE_INSENSITIVE or Pattern.UNICODE_CASE))
 
   private fun visible(selector: BySelector): UiObject2 =
     requireNotNull(device.wait(Until.findObject(selector), 30_000)) { "Visible UI missing: $selector" }

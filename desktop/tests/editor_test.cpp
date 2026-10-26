@@ -4,6 +4,7 @@
 #include <QGraphicsScene>
 #include <QScreen>
 #include <QSpinBox>
+#include <QWindow>
 #include <QtTest>
 class EditorTest : public QObject {
   Q_OBJECT
@@ -95,17 +96,30 @@ private slots:
     QApplication::processEvents();
     auto *canvas = editor.findChild<EditorCanvas *>();
     QVERIFY(canvas);
-    QTest::mousePress(canvas->viewport(), Qt::LeftButton, Qt::NoModifier,
-                      QPoint(40, 50));
-    QTest::mouseMove(canvas->viewport(), QPoint(200, 170));
-    QTest::mouseRelease(canvas->viewport(), Qt::LeftButton, Qt::NoModifier,
-                        QPoint(200, 170));
+    auto *window = editor.windowHandle();
+    QVERIFY(window);
+    auto point = [canvas, window](const QPoint &position) {
+      return window->mapFromGlobal(canvas->viewport()->mapToGlobal(position));
+    };
+    // Qt5's QWidget mouseMove overload moves the OS cursor instead of sending
+    // a button-state-aware drag. That move can target our floating toolbar.
+    // QWindow injection follows the real QWidgetWindow grab/dispatch path on
+    // both Qt5 and Qt6, even when the pointer crosses the toolbar while sizing.
+    QTest::mousePress(window, Qt::LeftButton, Qt::NoModifier,
+                      point(QPoint(40, 50)));
+    QTest::mouseMove(window, point(QPoint(200, 170)));
+    QTest::mouseRelease(window, Qt::LeftButton, Qt::NoModifier,
+                        point(QPoint(200, 170)));
     QCOMPARE(editor.flattenedImage().size(), QSize(160, 120));
-    QTest::mousePress(canvas->viewport(), Qt::LeftButton, Qt::NoModifier,
-                      QPoint(200, 170));
-    QTest::mouseMove(canvas->viewport(), QPoint(250, 220));
-    QTest::mouseRelease(canvas->viewport(), Qt::LeftButton, Qt::NoModifier,
-                        QPoint(250, 220));
+    auto *toolbar = editor.findChild<QWidget *>("captureToolbar");
+    QVERIFY(toolbar);
+    QVERIFY2(toolbar->geometry().contains(QPoint(250, 220)),
+             "Regression drag must cross the visible toolbar, not evade it");
+    QTest::mousePress(window, Qt::LeftButton, Qt::NoModifier,
+                      point(QPoint(200, 170)));
+    QTest::mouseMove(window, point(QPoint(250, 220)));
+    QTest::mouseRelease(window, Qt::LeftButton, Qt::NoModifier,
+                        point(QPoint(250, 220)));
     QCOMPARE(editor.flattenedImage().size(), QSize(210, 170));
     editor.undo();
     QCOMPARE(editor.flattenedImage().size(), QSize(160, 120));

@@ -8,6 +8,7 @@ qt_dir=${QT_BASE_DIR:-$(brew --prefix qtbase)}
 mkdir -p "$app/Contents/Resources/licenses"
 cp LICENSE THIRD_PARTY.md "$app/Contents/Resources/licenses/"
 cp licenses/*.txt "$app/Contents/Resources/licenses/"
-codesign --force --deep --sign - "$app"
+codesign --force --deep --sign "${KADROLOV_SIGN_IDENTITY:--}" "$app"
+codesign --verify --deep --strict "$app"
 ditto -c -k --sequesterRsrc --keepParent "$app" "$archive"
 shasum -a 256 "$archive"
