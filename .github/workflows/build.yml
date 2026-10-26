@@ -18,19 +18,24 @@ jobs:
             arch: arm64
             debarch: arm64
     runs-on: ${{ matrix.runner }}
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get update && sudo apt-get install -y cmake ninja-build dpkg-dev qt6-base-dev qt6-image-formats-plugins libx11-dev ffmpeg xvfb python3-dbus python3-gi gir1.2-gstreamer-1.0
-      - run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build build -j2
-      - run: xvfb-run -a ctest --test-dir build --output-on-failure
-      - run: python3 -m unittest discover -s native/linux/tests -v
-      - run: cmake --install build --prefix stage && tar czf kadrolov-linux-${{ matrix.arch }}.tar.gz -C stage .
-      - name: Build and test Debian installer
-        run: |
-          scripts/package-linux.sh build ${{ matrix.debarch }} dist 6
-          sudo apt-get install -y --no-install-recommends ./dist/*.deb
-          dpkg-query -W kadrolov
-          sudo apt-get remove -y kadrolov
+      - name: Build and install Qt6 package in clean Debian
+        run: >-
+          docker run --rm -v "$PWD:/src" -w /src debian:bookworm
+          bash -ec 'apt-get -o Acquire::Retries=2 -o Acquire::http::Timeout=30 update &&
+          apt-get -o Acquire::Retries=2 -o Acquire::http::Timeout=30 install -y --no-install-recommends build-essential dpkg-dev cmake ninja-build qt6-base-dev qt6-image-formats-plugins libx11-dev ffmpeg xvfb xauth python3-dbus python3-gi gir1.2-gstreamer-1.0 &&
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release &&
+          cmake --build build -j2 &&
+          xvfb-run -a ctest --test-dir build --output-on-failure &&
+          python3 -m unittest discover -s native/linux/tests -v &&
+          cmake --install build --prefix stage &&
+          tar czf kadrolov-linux-${{ matrix.arch }}.tar.gz -C stage . &&
+          scripts/package-linux.sh build ${{ matrix.debarch }} dist 6 &&
+          apt-get install -y --no-install-recommends ./dist/*.deb &&
+          dpkg-query -W kadrolov &&
+          dpkg --remove kadrolov'
       - uses: actions/upload-artifact@v4
         with:
           name: kadrolov-linux-${{ matrix.arch }}
