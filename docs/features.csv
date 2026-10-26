@@ -1,7 +1,7 @@
 id,feature,priority,platform,status,notes
 S01,Снимок экрана/монитора,must,desktop+android,implemented_unverified,API ОС
 S02,Выбор прямоугольной области,must,desktop+android,implemented_unverified,Android: после системного захвата/обрезки
-S03,Снимок отдельного окна,must,desktop,backend_only,macOS helper --list-windows/--window есть; UI picker пока не подключён.
+S03,Снимок отдельного окна,must,desktop,partial,macOS: UI picker + нативный снимок отдельного окна. Windows/X11: отдельный picker пока отсутствует; Wayland: системный выбор.
 S04,Курсор на снимке вкл/выкл,must,desktop,implemented_unverified,Платформенный адаптер
 S05,Задержка и повтор области,should,desktop,implemented_unverified,
 E01,Текст и настройка шрифта,must,all,implemented_unverified,
@@ -21,12 +21,12 @@ V06,Пауза/продолжение/остановка,must,all,implemented_un
 V07,FPS/размер/качество/формат,must,all,implemented_unverified,Список по доступным кодировщикам
 V08,Веб-камера поверх записи,must,all,implemented_unverified,Из функций референса
 V09,Обрезка начала/конца видео,must,all,implemented_unverified,Новая копия
-V10,Восстановление после сбоя,must,all,partial,Временные части сохраняются после ошибки; автоматическая сегментация длинных записей и восстановление пока не подтверждены.
+V10,Восстановление после сбоя,must,all,partial,Desktop: 15-минутные сегменты FFmpeg и поиск session.json; Android: ручной поиск незавершённых файлов. Crash/reboot end-to-end пока не проверен.
 H01,История и поиск,must,all,implemented_unverified,
 P01,Выбор папок и шаблона имени,must,all,implemented_unverified,Android MediaStore/SAF
 P02,Буфер и системный обмен,must,all,implemented_unverified,По возможностям ОС
 P03,Глобальные сочетания/трей,must,desktop,implemented_unverified,Порталы и разрешения
-P04,Две кнопки мыши/тихий режим/автозапуск,should,desktop,partial,Автозапуск с переключателем реализуется; две кнопки мыши/отдельный тихий режим пока не реализованы.
+P04,Две кнопки мыши/тихий режим/автозапуск,should,desktop,partial,Автозапуск с переключателем реализован; на Mac проверено создание/удаление LaunchAgent. Две кнопки мыши/отдельный тихий режим пока отсутствуют.
 P05,Печать,should,desktop,implemented_unverified,
 O01,Локальный OCR русский/английский,must,all,implemented_unverified,Проверить модели и ABI
 O02,ИИ-вопросы по изображению,should,all,excluded_by_user,"По уточнению Дениса: только устройство, без сервера/облака/внешнего ИИ."
@@ -34,12 +34,12 @@ C01,Сервер загрузок и короткие ссылки,must,client+s
 C02,Страница просмотра и скачивание,must,web,excluded_by_user,"По уточнению Дениса: только устройство, без сервера/облака/внешнего ИИ."
 C03,Срок хранения/удаление/квоты,must,server,excluded_by_user,"По уточнению Дениса: только устройство, без сервера/облака/внешнего ИИ."
 C04,Загрузка во время записи,should,all,excluded_by_user,"По уточнению Дениса: только устройство, без сервера/облака/внешнего ИИ."
-B01,Windows x64/ARM64/x86-32,must,build,ci_pending,Исходники/матрица CI; аппаратная проверка не проведена.
-B02,Linux x64/ARM64/x86-32/ARMv7,must,build,ci_pending,Исходники/матрица CI; аппаратная проверка не проведена.
-B03,macOS ARM64/x64,must,build,arm64_built_tested,Mac ARM64 собран/реальная запись проверена; Intel CI pending; 32bit недоступно.
-B04,Android ARM32/ARM64/x86/x64,must,build,apk_built_runtime_unverified,APK собран; OCR JNI содержит ARM32/ARM64/x86/x64; нет испытания устройства.
-B05,GitHub исходники/CI/руководство/сборки,must,delivery,prepared,Публикация и CI следуют после первичной проверки.
-UX01,Всплывающая панель иконок под рамкой снимка,must,desktop,in_progress,Прямое уточнение Дениса со скриншотами27.10.
-UX02,Компактная иконная мини-панель стоп/пауза/продолжить,must,all,in_progress,Desktop toolbar и Android overlay/notification.
-K01,Изменяемые раздельные горячие клавиши снимка/видео,must,desktop,in_progress,"PrintScreen default Windows/Linux, отдельная комбинация видео; конфликт сохраняет старые настройки."
-A01,Автозапуск с возможностью отключения,must,all,in_progress,"Desktop login; Android bootnotification, без автоматического MediaProjection."
+B01,Windows x64/ARM64/x86-32,must,build,ci_built_tested,Windows x64/ARM64/x86: сборка и QtTest прошли в GitHub Actions; захват на физических устройствах не проверен.
+B02,Linux x64/ARM64/x86-32/ARMv7,must,build,ci_built_tested,Linux x64/ARM64/x86/ARMv7: сборка и QtTest прошли в Actions c0c75b1; последние исправления проходят повторный CI. Нет ручной Wayland-проверки.
+B03,macOS ARM64/x64,must,build,ci_built_tested,ARM64 и Intel: CI сборка/тесты прошли. Mac M1: реальные native записи и Qt Recorder проверены; полный GUI проверяется. 32-bit macOS недоступна.
+B04,Android ARM32/ARM64/x86/x64,must,build,apk_built_runtime_in_progress,APK4ABI собран;6JUnit/lint/16KB/OCR прошли. Эмулятор API35 проверяется отдельно; физическое устройство не проверено.
+B05,GitHub исходники/CI/руководство/сборки,must,delivery,published_source_ci,GitHub DenKedr/kadrolov публичен; матрицаCI работает; подготовка пакетовRelease.
+UX01,Всплывающая панель иконок под рамкой снимка,must,desktop,implemented_partially_verified,QtTest geometry/export/undo прошли Qt5/6. StandaloneMac overlay открылся; ручное выделение проверяется.
+UX02,Компактная иконная мини-панель стоп/пауза/продолжить,must,all,implemented_unverified,Desktop toolbar и Android overlay/notification: стоп/пауза/продолжение. Реальные nativeMac pause/resume проверены; GUI-проверка продолжается.
+K01,Изменяемые раздельные горячие клавиши снимка/видео,must,desktop,implemented_partially_verified,Раздельные изменяемые сочетания реализованы. Mac UI показывает глобальную регистрацию; конфликт сохраняет прежние настройки. PrintScreen default Windows/Linux.
+A01,Автозапуск с возможностью отключения,must,all,implemented_partially_verified,Mac: переключатель создаёт/удаляет валидный LaunchAgent; возвращён OFF. Desktop login; Android boot notification без автозахвата.
