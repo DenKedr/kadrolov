@@ -740,7 +740,7 @@ void MainWindow::acquireSnapshot(QScreen *screen,
       return;
     }
     program = QStandardPaths::findExecutable("python3");
-    args = QStringList{script, "--screenshot", "--output", path};
+    args = QStringList{script, "--screenshot", path};
   } else {
     callback(screen->grabWindow(0));
     return;

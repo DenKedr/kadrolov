@@ -176,7 +176,11 @@ class CaptureRuntimeTest {
     val spinner = visible(By.res("com.android.systemui", "screen_share_mode_spinner"))
     spinner.click()
     visible(label("Entire screen")).click()
-    visible(By.text(Pattern.compile("Start (now|recording|sharing)", Pattern.CASE_INSENSITIVE or Pattern.UNICODE_CASE))).click()
+    // API 35 Google APIs evidence: the real SystemUI dialog's affirmative button is
+    // android:id/button1, text "Start" (not "Start now"), package com.android.systemui.
+    visible(By.res("com.android.systemui", "screen_share_permission_dialog"))
+    visible(label("Start").pkg("com.android.systemui")
+      .res("android:id/button1").clazz("android.widget.Button").clickable(true)).click()
     assertTrue("System consent closes", device.wait(Until.gone(By.res("com.android.systemui", "screen_share_mode_spinner")), 10_000))
   }
 
