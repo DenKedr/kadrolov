@@ -665,10 +665,10 @@ Editor::Editor(const QImage &image, QWidget *parent)
     program = QCoreApplication::applicationDirPath() + "/kadrolov-capture";
     if (!QFileInfo::exists(program))
       program = QStandardPaths::findExecutable("kadrolov-capture");
-    args = {"--ocr", input};
+    args = QStringList{"--ocr", input};
     mac = true;
 #else
- program=QStandardPaths::findExecutable("tesseract");args={input,"stdout","-l","rus+eng"};
+ program=QStandardPaths::findExecutable("tesseract");args = QStringList{input,"stdout","-l","rus+eng"};
 #endif
     if (program.isEmpty()) {
       QMessageBox::information(

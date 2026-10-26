@@ -1,6 +1,7 @@
 #include "GlobalHotkeys.h"
 #include "MainWindow.h"
 #include <QApplication>
+#include <QIcon>
 #include <QFontDatabase>
 #include <QStyleFactory>
 int main(int argc, char **argv) {
@@ -10,6 +11,7 @@ int main(int argc, char **argv) {
   app.setOrganizationName(QStringLiteral("Kadrolov"));
   app.setOrganizationDomain(QStringLiteral("kadrolov.local"));
   app.setApplicationVersion("0.1.0");
+  app.setWindowIcon(QIcon(QStringLiteral(":/icons/kadrolov.png")));
   app.setStyle(QStyleFactory::create("Fusion"));
   app.setFont(QFontDatabase::systemFont(QFontDatabase::GeneralFont));
   MainWindow window;

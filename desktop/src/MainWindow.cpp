@@ -708,18 +708,18 @@ void MainWindow::acquireSnapshot(QScreen *screen,
                        "полный пакет приложения."));
     return;
   }
-  args = {"--screenshot",
-          path,
-          "--rect",
-          QString("%1,%2,%3,%4")
-              .arg(geometry.x())
-              .arg(geometry.y())
-              .arg(geometry.width())
-              .arg(geometry.height()),
-          "--cursor",
-          screenshotCursor_->isChecked() ? "1" : "0",
-          "--exclude-pid",
-          QString::number(QCoreApplication::applicationPid())};
+  args = QStringList{"--screenshot",
+                     path,
+                     "--rect",
+                     QString("%1,%2,%3,%4")
+                         .arg(geometry.x())
+                         .arg(geometry.y())
+                         .arg(geometry.width())
+                         .arg(geometry.height()),
+                     "--cursor",
+                     screenshotCursor_->isChecked() ? "1" : "0",
+                     "--exclude-pid",
+                     QString::number(QCoreApplication::applicationPid())};
 #elif defined(Q_OS_LINUX)
   if (qEnvironmentVariable("XDG_SESSION_TYPE") == "wayland") {
     QString script = qEnvironmentVariable("KADROLOV_PORTAL_HELPER");
@@ -734,7 +734,7 @@ void MainWindow::acquireSnapshot(QScreen *screen,
       return;
     }
     program = QStandardPaths::findExecutable("python3");
-    args = {script, "--screenshot", "--output", path};
+    args = QStringList{script, "--screenshot", "--output", path};
   } else {
     callback(screen->grabWindow(0));
     return;
@@ -1250,7 +1250,7 @@ void MainWindow::trimSelected() {
             QMessageBox::warning(this, QStringLiteral("FFmpeg не запустился"),
                                  process->errorString());
           });
-  QStringList args = {
+  QStringList args = QStringList{
       "-hide_banner", "-loglevel",
       "error",        "-n",
       "-ss",          QString::number(start.value(), 'f', 2),
@@ -1328,7 +1328,7 @@ void MainWindow::requestScreenPermission() {
             if (error == QProcess::FailedToStart)
               openSettings();
           });
-  process->start(helper, {QStringLiteral("--request-permission")});
+  process->start(helper, QStringList{QStringLiteral("--request-permission")});
 #else
   QMessageBox::information(
       this, QStringLiteral("Разрешение записи экрана"),

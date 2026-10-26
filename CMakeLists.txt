@@ -3,12 +3,14 @@ project(Kadrolov VERSION 0.1.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
 option(KADROLOV_BUILD_APP "Build desktop app" ON)
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets Test PrintSupport)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Test PrintSupport)
 if(KADROLOV_BUILD_APP)
   add_executable(kadrolov MACOSX_BUNDLE WIN32
     desktop/src/main.cpp desktop/src/MainWindow.cpp desktop/src/MainWindow.h
+    desktop/resources.qrc
     desktop/src/Editor.cpp desktop/src/Editor.h
     desktop/src/RegionSelector.cpp desktop/src/RegionSelector.h
     desktop/src/RecordingPanel.cpp desktop/src/RecordingPanel.h
@@ -24,6 +26,8 @@ if(KADROLOV_BUILD_APP)
   target_link_libraries(kadrolov PRIVATE Qt${QT_VERSION_MAJOR}::Widgets Qt${QT_VERSION_MAJOR}::PrintSupport)
   set_target_properties(kadrolov PROPERTIES MACOSX_BUNDLE_BUNDLE_NAME "Кадролов" MACOSX_BUNDLE_GUI_IDENTIFIER "ru.kadrolov.desktop" MACOSX_BUNDLE_INFO_PLIST "${CMAKE_SOURCE_DIR}/native/macos/Info.plist.in")
   if(APPLE)
+    target_sources(kadrolov PRIVATE assets/icons/kadrolov.icns)
+    set_source_files_properties(assets/icons/kadrolov.icns PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
     target_link_libraries(kadrolov PRIVATE "-framework CoreGraphics" "-framework Carbon")
     add_custom_target(mac_capture ALL COMMAND bash "${CMAKE_SOURCE_DIR}/native/macos/build.sh" "${CMAKE_BINARY_DIR}/native/kadrolov-capture" BYPRODUCTS "${CMAKE_BINARY_DIR}/native/kadrolov-capture")
     add_dependencies(kadrolov mac_capture)
@@ -45,6 +49,8 @@ if(KADROLOV_BUILD_APP)
     install(PROGRAMS native/linux/portal_capture.py DESTINATION bin)
   endif()
   if(WIN32)
+    configure_file(native/windows/app.rc.in ${CMAKE_BINARY_DIR}/kadrolov.rc @ONLY)
+    target_sources(kadrolov PRIVATE ${CMAKE_BINARY_DIR}/kadrolov.rc)
     add_executable(kadrolov-audio native/windows/audio.cpp)
     target_link_libraries(kadrolov-audio PRIVATE ole32 uuid)
     target_compile_definitions(kadrolov-audio PRIVATE UNICODE _UNICODE)

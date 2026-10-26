@@ -105,8 +105,10 @@ inline QIcon captureIcon(const QString &name,
     p.drawRect(QRectF(10, 19, 12, 9));
   } else if (name == "copy") {
     p.drawRoundedRect(QRectF(6, 10, 15, 18), 2, 2);
-    p.drawPolyline(QPolygonF{QPointF(12, 7), QPointF(12, 4), QPointF(27, 4),
-                             QPointF(27, 21), QPointF(24, 21)});
+    QPolygonF corner;
+    corner << QPointF(12, 7) << QPointF(12, 4) << QPointF(27, 4)
+           << QPointF(27, 21) << QPointF(24, 21);
+    p.drawPolyline(corner);
   } else if (name == "check") {
     p.setPen(QPen(color, 3, Qt::SolidLine, Qt::RoundCap));
     p.drawLine(6, 17, 13, 24);
@@ -122,7 +124,9 @@ inline QIcon captureIcon(const QString &name,
   } else if (name == "play") {
     p.setPen(Qt::NoPen);
     p.setBrush(color);
-    p.drawPolygon(QPolygonF{QPointF(10, 6), QPointF(27, 16), QPointF(10, 26)});
+    QPolygonF triangle;
+    triangle << QPointF(10, 6) << QPointF(27, 16) << QPointF(10, 26);
+    p.drawPolygon(triangle);
   } else if (name == "stop") {
     p.setPen(Qt::NoPen);
     p.setBrush(color);
