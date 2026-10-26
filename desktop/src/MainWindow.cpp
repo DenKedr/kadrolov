@@ -1234,10 +1234,17 @@ void MainWindow::requestExit() {
     question.setDefaultButton(QMessageBox::Cancel);
     if (question.exec() != QMessageBox::Yes)
       return;
-    exitAfterSave_ = true;
-    if (state != Recorder::Finalizing)
-      recorder_->stop();
-    return;
+    // The modal dialog runs an event loop: finalization may have finished
+    // or failed while the user was deciding.
+    const auto current = recorder_->state();
+    if (current == Recorder::Failed)
+      return;
+    if (current != Recorder::Idle) {
+      exitAfterSave_ = true;
+      if (current != Recorder::Finalizing)
+        recorder_->stop();
+      return;
+    }
   }
   savePreferences();
   exitAllowed_ = true;

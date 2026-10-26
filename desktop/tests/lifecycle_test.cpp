@@ -1,6 +1,8 @@
 #include "ApplicationInstance.h"
 #include "MainWindow.h"
+#include <QAbstractButton>
 #include <QApplication>
+#include <QMessageBox>
 #include <QProcess>
 #include <QSignalSpy>
 #include <QStandardPaths>
@@ -59,6 +61,44 @@ private slots:
              qPrintable(child.readAllStandardError()));
     QCOMPARE(child.exitStatus(), QProcess::NormalExit);
     QCOMPARE(child.exitCode(), 0);
+  }
+  void exitRechecksRecorderAfterModalQuestion_data() {
+    QTest::addColumn<int>("nextState");
+    QTest::addColumn<bool>("accept");
+    QTest::newRow("finished while deciding") << int(Recorder::Idle) << true;
+    QTest::newRow("failed while deciding") << int(Recorder::Failed) << true;
+    QTest::newRow("cancel keeps finalizing")
+        << int(Recorder::Finalizing) << false;
+  }
+  void exitRechecksRecorderAfterModalQuestion() {
+    QFETCH(int, nextState);
+    QFETCH(bool, accept);
+    MainWindow window;
+    auto *recorder = window.findChild<Recorder *>();
+    QVERIFY(recorder);
+    recorder->setState(Recorder::Finalizing);
+    QSignalSpy exit(&window, &MainWindow::exitReady);
+    bool answered = false;
+    QTimer::singleShot(0, [&] {
+      auto *question =
+          qobject_cast<QMessageBox *>(QApplication::activeModalWidget());
+      if (!question)
+        return;
+      recorder->setState(Recorder::State(nextState));
+      answered = true;
+      question->button(accept ? QMessageBox::Yes : QMessageBox::Cancel)
+          ->click();
+    });
+    window.requestExit();
+    QVERIFY(answered);
+    QCOMPARE(exit.count(), accept && nextState == Recorder::Idle ? 1 : 0);
+    if (exit.isEmpty()) {
+      // Failure and cancellation must not leave a pending-exit latch that
+      // silently discards the user's next explicit request.
+      recorder->setState(Recorder::Idle);
+      window.requestExit();
+      QCOMPARE(exit.count(), 1);
+    }
   }
   void closingKeepsWindowAndEventLoopUntilExplicitExit() {
     MainWindow window;

@@ -29,6 +29,7 @@ signals:
     void completed(const QString &path);
     void error(const QString &message);
 private:
+    friend class LifecycleTest;
     void setState(State state);
     void readHelper();
     void startSegment();

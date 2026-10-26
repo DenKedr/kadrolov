@@ -38,7 +38,7 @@ DEB устанавливается командой `sudo apt install ./kadrolov
 Portable-пакет зависит от Qt соответствующей ветки (Qt6 для x64/ARM64, Qt5 для legacy32), image-format plugins и FFmpeg. Для Ubuntu/Debian современные зависимости:
 
 ```sh
-sudo apt install libqt6widgets6 libqt6printsupport6 qt6-image-formats-plugins ffmpeg
+sudo apt install libqt6widgets6 libqt6printsupport6 libqt6network6 qt6-image-formats-plugins ffmpeg
 ```
 
 Wayland дополнительно использует системные портал/PipeWire и Python GStreamer bindings — [инструкция](native/linux/README.md). Приложение не меняет сессию и настройки безопасности автоматически. Для OCR на Linux/Windows установите Tesseract с моделями `rus` и `eng`.
