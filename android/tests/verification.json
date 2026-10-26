@@ -1,0 +1,39 @@
+{
+  "status": "built_and_static_checked",
+  "runtime_device_tested": false,
+  "apk": "android/app/build/outputs/apk/debug/app-debug.apk",
+  "apk_bytes": 35540911,
+  "apk_sha256": "bb5b41b500cc4367859831f78cbf5dfaf243d43d8b402e797f96c10748d7558f",
+  "abis": [
+    "arm64-v8a",
+    "armeabi-v7a",
+    "x86",
+    "x86_64"
+  ],
+  "lint": {
+    "Error": 0,
+    "Warning": 19,
+    "Fatal": 0
+  },
+  "unit_tests": [
+    {
+      "name": "ru.kadrolov.app.FrameScheduleTest",
+      "tests": "3",
+      "failures": "0",
+      "errors": "0"
+    },
+    {
+      "name": "ru.kadrolov.app.RecordingTimelineTest",
+      "tests": "3",
+      "failures": "0",
+      "errors": "0"
+    }
+  ],
+  "standalone_smoke_assertions": 12,
+  "notes": [
+    "No emulator or physical device was used in this task",
+    "MediaProjection/audio/camera/EGL/overlay still require device testing",
+    "APK dependencies include all four native OCR ABIs and verified rus/eng models",
+    "Boot receiver only prepares an optional shortcut notification; no automatic capture"
+  ]
+}

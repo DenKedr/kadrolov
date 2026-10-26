@@ -1,0 +1,16 @@
+/build*/
+/.superpowers/
+/.gradle/
+/android/.gradle/
+/android/.kotlin/
+__pycache__/
+*.pyc
+*.class
+/android/local.properties
+/android/**/build/
+*.user
+.DS_Store
+*.log
+*.jks
+*.keystore
+/recordings/

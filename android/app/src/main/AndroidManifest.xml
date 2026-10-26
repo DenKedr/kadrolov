@@ -1,0 +1,23 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+ <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+ <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+ <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+ <uses-permission android:name="android.permission.RECORD_AUDIO" />
+ <uses-permission android:name="android.permission.CAMERA" />
+ <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
+ <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+ <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+ <uses-feature android:name="android.hardware.camera" android:required="false" />
+ <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+ <uses-feature android:name="android.hardware.microphone" android:required="false" />
+ <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+ <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+ <application android:theme="@style/AppTheme" android:label="Кадролов" android:icon="@drawable/ic_launcher" android:allowBackup="false" android:fullBackupContent="false" android:dataExtractionRules="@xml/data_extraction_rules" android:usesCleartextTraffic="false" android:supportsRtl="true">
+  <activity android:name=".MainActivity" android:exported="true" android:configChanges="orientation|screenSize|keyboardHidden">
+   <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
+  </activity>
+  <activity android:name=".EditorActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden"/>
+  <receiver android:name=".BootReceiver" android:exported="false"><intent-filter><action android:name="android.intent.action.BOOT_COMPLETED"/><action android:name="android.intent.action.MY_PACKAGE_REPLACED"/></intent-filter></receiver>
+  <service android:name=".CaptureService" android:exported="false" android:foregroundServiceType="mediaProjection|microphone|camera"/>
+ </application>
+</manifest>

@@ -1,0 +1,43 @@
+{
+  "tesseract4android": {
+    "version": "4.9.0",
+    "source": "https://jitpack.io/cz/adaptech/tesseract4android/tesseract4android/4.9.0/tesseract4android-4.9.0.aar",
+    "sha256": "bce5d6413a1a5ae3d7240033fbbc851ba3217d0a08d9769400e17a077f42cb2a",
+    "abis": [
+      "arm64-v8a",
+      "armeabi-v7a",
+      "x86",
+      "x86_64"
+    ],
+    "native_libraries": [
+      "jni/arm64-v8a/libjpeg.so",
+      "jni/arm64-v8a/libleptonica.so",
+      "jni/arm64-v8a/libpngx.so",
+      "jni/arm64-v8a/libtesseract.so",
+      "jni/armeabi-v7a/libjpeg.so",
+      "jni/armeabi-v7a/libleptonica.so",
+      "jni/armeabi-v7a/libpngx.so",
+      "jni/armeabi-v7a/libtesseract.so",
+      "jni/x86/libjpeg.so",
+      "jni/x86/libleptonica.so",
+      "jni/x86/libpngx.so",
+      "jni/x86/libtesseract.so",
+      "jni/x86_64/libjpeg.so",
+      "jni/x86_64/libleptonica.so",
+      "jni/x86_64/libpngx.so",
+      "jni/x86_64/libtesseract.so"
+    ]
+  },
+  "tessdata": {
+    "eng": {
+      "version": "tessdata_fast 4.1.0",
+      "sha256": "7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2",
+      "bytes": 4113088
+    },
+    "rus": {
+      "version": "tessdata_fast 4.1.0",
+      "sha256": "e16e5e036cce1d9ec2b00063cf8b54472625b9e14d893a169e2b0dedeb4df225",
+      "bytes": 3861738
+    }
+  }
+}

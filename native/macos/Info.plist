@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>CFBundleIdentifier</key><string>ru.kadrolov.capture</string>
+<key>CFBundleName</key><string>Кадролов</string>
+<key>NSMicrophoneUsageDescription</key><string>Запись микрофона включается пользователем в настройках видеозаписи Кадролова.</string>
+<key>NSCameraUsageDescription</key><string>Камера добавляется поверх записи только после вашего включения.</string>
+<key>NSScreenCaptureUsageDescription</key><string>Кадролов записывает только выбранный вами экран, окно или область и сохраняет результат на этом устройстве.</string>
+</dict></plist>

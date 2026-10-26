@@ -1,0 +1,45 @@
+id,feature,priority,platform,status,notes
+S01,Снимок экрана/монитора,must,desktop+android,implemented_unverified,API ОС
+S02,Выбор прямоугольной области,must,desktop+android,implemented_unverified,Android: после системного захвата/обрезки
+S03,Снимок отдельного окна,must,desktop,backend_only,macOS helper --list-windows/--window есть; UI picker пока не подключён.
+S04,Курсор на снимке вкл/выкл,must,desktop,implemented_unverified,Платформенный адаптер
+S05,Задержка и повтор области,should,desktop,implemented_unverified,
+E01,Текст и настройка шрифта,must,all,implemented_unverified,
+E02,Стрелки/линии/прямоугольники,must,all,implemented_unverified,
+E03,Круги/овалы,must,all,implemented_unverified,
+E04,Цвет/толщина/прозрачность,must,all,implemented_unverified,
+E05,Карандаш/маркер/нумерация,must,all,implemented_unverified,Из функций референса
+E06,Размытие/пикселизация,must,all,implemented_unverified,Экспорт заменяет пиксели
+E07,Отмена/повтор/перемещение/удаление,must,all,implemented_unverified,
+E08,Обрезка и экспорт PNG/JPEG/WebP,must,all,implemented_unverified,
+V01,Запись экрана/окна/области,must,all,implemented_unverified,Системный выбор источника
+V02,Системный звук вкл/выкл,must,all,implemented_unverified,Android10+; запреты источника сохраняются
+V03,Микрофон и смешивание звука,must,all,implemented_unverified,Явный выбор устройств
+V04,Курсор в видео вкл/выкл,must,desktop,implemented_unverified,Android согласно API ОС
+V05,Круги кликов вкл/выкл,must,desktop,implemented_unverified,"Android global taps: ограничено ОС, альтернативное поведение требует согласования"
+V06,Пауза/продолжение/остановка,must,all,implemented_unverified,
+V07,FPS/размер/качество/формат,must,all,implemented_unverified,Список по доступным кодировщикам
+V08,Веб-камера поверх записи,must,all,implemented_unverified,Из функций референса
+V09,Обрезка начала/конца видео,must,all,implemented_unverified,Новая копия
+V10,Восстановление после сбоя,must,all,partial,Временные части сохраняются после ошибки; автоматическая сегментация длинных записей и восстановление пока не подтверждены.
+H01,История и поиск,must,all,implemented_unverified,
+P01,Выбор папок и шаблона имени,must,all,implemented_unverified,Android MediaStore/SAF
+P02,Буфер и системный обмен,must,all,implemented_unverified,По возможностям ОС
+P03,Глобальные сочетания/трей,must,desktop,implemented_unverified,Порталы и разрешения
+P04,Две кнопки мыши/тихий режим/автозапуск,should,desktop,partial,Автозапуск с переключателем реализуется; две кнопки мыши/отдельный тихий режим пока не реализованы.
+P05,Печать,should,desktop,implemented_unverified,
+O01,Локальный OCR русский/английский,must,all,implemented_unverified,Проверить модели и ABI
+O02,ИИ-вопросы по изображению,should,all,excluded_by_user,"По уточнению Дениса: только устройство, без сервера/облака/внешнего ИИ."
+C01,Сервер загрузок и короткие ссылки,must,client+server,excluded_by_user,"По уточнению Дениса: только устройство, без сервера/облака/внешнего ИИ."
+C02,Страница просмотра и скачивание,must,web,excluded_by_user,"По уточнению Дениса: только устройство, без сервера/облака/внешнего ИИ."
+C03,Срок хранения/удаление/квоты,must,server,excluded_by_user,"По уточнению Дениса: только устройство, без сервера/облака/внешнего ИИ."
+C04,Загрузка во время записи,should,all,excluded_by_user,"По уточнению Дениса: только устройство, без сервера/облака/внешнего ИИ."
+B01,Windows x64/ARM64/x86-32,must,build,ci_pending,Исходники/матрица CI; аппаратная проверка не проведена.
+B02,Linux x64/ARM64/x86-32/ARMv7,must,build,ci_pending,Исходники/матрица CI; аппаратная проверка не проведена.
+B03,macOS ARM64/x64,must,build,arm64_built_tested,Mac ARM64 собран/реальная запись проверена; Intel CI pending; 32bit недоступно.
+B04,Android ARM32/ARM64/x86/x64,must,build,apk_built_runtime_unverified,APK собран; OCR JNI содержит ARM32/ARM64/x86/x64; нет испытания устройства.
+B05,GitHub исходники/CI/руководство/сборки,must,delivery,prepared,Публикация и CI следуют после первичной проверки.
+UX01,Всплывающая панель иконок под рамкой снимка,must,desktop,in_progress,Прямое уточнение Дениса со скриншотами27.10.
+UX02,Компактная иконная мини-панель стоп/пауза/продолжить,must,all,in_progress,Desktop toolbar и Android overlay/notification.
+K01,Изменяемые раздельные горячие клавиши снимка/видео,must,desktop,in_progress,"PrintScreen default Windows/Linux, отдельная комбинация видео; конфликт сохраняет старые настройки."
+A01,Автозапуск с возможностью отключения,must,all,in_progress,"Desktop login; Android bootnotification, без автоматического MediaProjection."

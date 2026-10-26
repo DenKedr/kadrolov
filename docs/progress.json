@@ -1,0 +1,14 @@
+{
+  "status": "implementation_in_progress",
+  "github": "not_published_yet",
+  "desktop": "ARM64 build and core capture tested; latest overlay undergoing GUI verification",
+  "android": "APK built 4ABI, unit6, lint0errors; runtime emulator test being prepared",
+  "windows": "native MP4 H264AAC capture with system/mic/mix/camera, CI compilation pending",
+  "linux": "X11 FFmpeg and Wayland portal backend; runtime pending",
+  "remaining": [
+    "CI all target architectures",
+    "GUI overlay/hotkey/autostart checks",
+    "artifact packaging",
+    "remaining matrix functions"
+  ]
+}
