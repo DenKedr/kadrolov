@@ -36,4 +36,9 @@ check(ocrArgs.ocrPath != nil, "offline OCR mode without record output")
 let mixArgs = try CaptureArguments.parse(["--mix-audio", "/tmp/raw.mp4", "--output", "/tmp/mixed.mp4"])
 check(mixArgs.mixAudioPath != nil, "native mix mode")
 do { _ = try CaptureArguments.parse(["--screenshot", "/tmp/test.png", "--width", "1", "--height", "1"]); check(false,"invalid screenshot dimensions rejected") } catch {}
+do {
+    let probe = try CaptureArguments.parse(["--check-permission", "--probe-content"])
+    check(probe.checkPermission, "opt-in ScreenCaptureKit permission probe accepted")
+} catch { check(false, "permission probe CLI: \(error.localizedDescription)") }
+do { _ = try CaptureArguments.parse(["--probe-content", "--output", "/tmp/test.mp4"]); check(false, "probe requires explicit permission check mode") } catch {}
 print("PASS: pause timeline, delayed/out-of-order samples, geometry and CLI validation")

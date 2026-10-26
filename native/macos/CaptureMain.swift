@@ -512,10 +512,29 @@ struct CaptureMain {
                 return
             }
             if options.checkPermission {
-                emit(["event": "permission", "screenRecording": CGPreflightScreenCaptureAccess(),
-                      "microphone": AVCaptureDevice.authorizationStatus(for: .audio) == .authorized,
-                      "nativeClicks": ProcessInfo.processInfo.operatingSystemVersion.majorVersion >= 15,
-                      "camera": AVCaptureDevice.authorizationStatus(for: .video) == .authorized])
+                let preflight = CGPreflightScreenCaptureAccess()
+                var result: [String: Any] = ["event": "permission", "screenRecording": preflight,
+                    "microphone": AVCaptureDevice.authorizationStatus(for: .audio) == .authorized,
+                    "nativeClicks": ProcessInfo.processInfo.operatingSystemVersion.majorVersion >= 15,
+                    "camera": AVCaptureDevice.authorizationStatus(for: .video) == .authorized]
+                // Explicit opt-in only: unlike passive preflight, ScreenCaptureKit enumeration
+                // can display a system permission prompt. Never run it in background polling.
+                if options.probeContent {
+                    result["pid"] = getpid()
+                    result["parentPID"] = getppid()
+                    do {
+                        let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+                        result["screenCaptureKit"] = ["enumerationSucceeded": true,
+                            "displayCount": content.displays.count, "windowCount": content.windows.count]
+                    } catch {
+                        let failure = error as NSError
+                        result["screenCaptureKit"] = ["enumerationSucceeded": false,
+                            "errorDomain": failure.domain, "errorCode": failure.code,
+                            "errorDescription": failure.localizedDescription]
+                    }
+                    result["preflightAfterProbe"] = CGPreflightScreenCaptureAccess()
+                }
+                emit(result)
                 return
             }
             if options.listDisplays {

@@ -76,6 +76,7 @@ struct CaptureArguments {
     var listMicrophones = false
     var listWindows = false
     var checkPermission = false
+    var probeContent = false
     var requestPermission = false
     var help = false
     static func parse(_ values: [String]) throws -> CaptureArguments {
@@ -88,6 +89,7 @@ struct CaptureArguments {
             if key == "--list-displays" { result.listDisplays = true; i += 1; continue }
             if key == "--list-windows" { result.listWindows = true; i += 1; continue }
             if key == "--request-permission" { result.requestPermission = true; i += 1; continue }
+            if key == "--probe-content" { result.probeContent = true; i += 1; continue }
             if key == "--check-permission" { result.checkPermission = true; i += 1; continue }
             guard i + 1 < values.count else { throw CaptureFailure("Не задано значение \(key).") }
             let value = values[i + 1]
@@ -127,6 +129,7 @@ struct CaptureArguments {
             }
             i += 2
         }
+        guard !result.probeContent || result.checkPermission else { throw CaptureFailure("--probe-content применяется только вместе с --check-permission.") }
         guard (result.width == 0) == (result.height == 0), result.width != 1, result.height != 1 else {
             throw CaptureFailure("Ширина и высота задаются вместе и должны быть не меньше 2.")
         }

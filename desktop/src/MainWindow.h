@@ -38,6 +38,9 @@ private:
   void trimSelected();
   void refreshMicrophones();
   void requestScreenPermission();
+  void selectWindowScreenshot();
+  void captureWindowScreenshot(qint64 windowId, const QRect &frame,
+                               QScreen *screen);
   void showCaptureError(const QString &message);
   void chooseFolder(QLineEdit *, const QString &key);
   void rememberFile(const QString &);
@@ -47,7 +50,7 @@ private:
   void updateSummary();
   void savePreferences();
   QScreen *selectedScreen(bool video) const;
-  bool permissionRequestRunning_ = false;
+  bool permissionRequestRunning_ = false, windowListing_ = false;
   GlobalHotkeys *hotkeys_ = nullptr;
   QKeySequenceEdit *screenshotKeys_, *videoKeys_;
   QCheckBox *autostart_, *askVideoPath_;

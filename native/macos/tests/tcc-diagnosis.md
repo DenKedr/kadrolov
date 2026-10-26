@@ -47,3 +47,19 @@ log show --last 8m --style compact \
 ```
 
 The private TCC database was inaccessible during read-only inspection. No effort was made to expand access; the diagnosis uses public signing tools and existing unified-log evidence.
+
+## Follow-up after stable signing
+
+The main agent subsequently signed both binaries with the existing Apple Development identity. Read-only inspection confirmed certificate-backed designated requirements and the same TeamIdentifier for parent/helper; no personal certificate subject is recorded here. The app's new CDHash was `8368f414dc524233185a4e02263143db0edeb8e4` and helper's `88bf3d3426c3137438a3f19725a5164772250c48`.
+
+Nevertheless, unified-log events at 00:52:07 still attribute the real helper request to parent `ru.kadrolov.desktop` and compare against the **same old ad-hoc `3f8b03...` requirement**, returning -67050. Re-adding one identically labelled UI row did not establish that the saved bundle-ID principal's verifier was replaced. Duplicate display labels can correspond to different bundle/path principals. A targeted, system-supported reset of only `ScreenCapture` for `ru.kadrolov.desktop`, followed by the normal user's grant, is therefore a narrower next action for the main agent than resetting all services; it was not performed by this investigator.
+
+An explicit diagnostic was added:
+
+```sh
+kadrolov-capture --check-permission --probe-content
+```
+
+Without `--probe-content`, passive preflight retains its previous non-prompting behavior. With the flag, the helper additionally attempts actual SCShareableContent enumeration and returns only display/window **counts**, preflight before/after, PID/parentPID, or NSError domain/code/description. This can trigger a native OS consent prompt and must only be invoked by an explicit diagnostic action. No pixels or window titles are collected. Enumeration success is not labelled successful screenshot permission.
+
+A separate binary was compiled at `build/native/kadrolov-capture-diagnostic`; the signed packaged application was not modified. From the Codex launch context it reported preflight true, actual enumeration successful, one display and 51 windows. The GUI-parent probe is still required to test the failing context. Production screenshot/video guards remain unchanged.

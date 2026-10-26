@@ -25,6 +25,7 @@
 #include <QGroupBox>
 #include <QHBoxLayout>
 #include <QImageReader>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QKeySequenceEdit>
@@ -147,6 +148,11 @@ MainWindow::MainWindow(QWidget *p)
   shotSource_->addItems({QStringLiteral("Выбрать область"),
                          QStringLiteral("Весь выбранный экран"),
                          QStringLiteral("Последняя область")});
+#ifdef Q_OS_MACOS
+  shotSource_->addItem(QStringLiteral("Отдельное окно"));
+  connect(shotSource_, qOverload<int>(&QComboBox::currentIndexChanged), this,
+          [this](int index) { shotScreen_->setEnabled(index != 3); });
+#endif
   sf->addRow(QStringLiteral("Источник"), shotSource_);
   sf->addRow(QStringLiteral("Монитор"), shotScreen_);
   delay_ = new QSpinBox;
@@ -805,6 +811,13 @@ void MainWindow::acquireSnapshot(QScreen *screen,
 void MainWindow::takeScreenshot() {
   savePreferences();
   int source = shotSource_->currentIndex();
+#ifdef Q_OS_MACOS
+  if (source == 3) {
+    selectWindowScreenshot();
+    return;
+  }
+#endif
+
   if (source == 0) {
     selectArea(false);
     return;
@@ -1359,4 +1372,238 @@ void MainWindow::showCaptureError(const QString &message) {
 #endif
   QMessageBox::warning(this, QStringLiteral("Не удалось захватить экран"),
                        message);
+}
+
+void MainWindow::selectWindowScreenshot() {
+#ifdef Q_OS_MACOS
+  if (windowListing_)
+    return;
+  QString helper = QCoreApplication::applicationDirPath() +
+                   QStringLiteral("/kadrolov-capture");
+  if (!QFileInfo::exists(helper))
+    helper = QStandardPaths::findExecutable(QStringLiteral("kadrolov-capture"));
+  if (helper.isEmpty()) {
+    showCaptureError(QStringLiteral("Не найден системный модуль снимков. "
+                                    "Используйте полный пакет Кадролова."));
+    return;
+  }
+  windowListing_ = true;
+  auto *process = new QProcess(this);
+  QTimer::singleShot(15000, process, [process] {
+    if (process->state() != QProcess::NotRunning)
+      process->kill();
+  });
+  connect(process, &QProcess::errorOccurred, this,
+          [this, process](QProcess::ProcessError error) {
+            if (error != QProcess::FailedToStart)
+              return;
+            windowListing_ = false;
+            showCaptureError(process->errorString());
+            process->deleteLater();
+          });
+  connect(
+      process, qOverload<int, QProcess::ExitStatus>(&QProcess::finished), this,
+      [this, process](int code, QProcess::ExitStatus status) {
+        QJsonArray windows;
+        QString error;
+        for (const auto &line : process->readAllStandardOutput().split('\n')) {
+          auto object = QJsonDocument::fromJson(line).object();
+          if (object.value("event").toString() == "windows")
+            windows = object.value("windows").toArray();
+          if (object.value("event").toString() == "error")
+            error = object.value("message").toString();
+        }
+        process->deleteLater();
+        if (code != 0 || status != QProcess::NormalExit) {
+          windowListing_ = false;
+          showCaptureError(
+              error.isEmpty()
+                  ? QStringLiteral("Не удалось получить список окон. Проверьте "
+                                   "разрешение записи экрана.")
+                  : error);
+          return;
+        }
+        QDialog dialog(this);
+        dialog.setWindowTitle(QStringLiteral("Выберите окно для снимка"));
+        dialog.resize(580, 420);
+        auto *layout = new QVBoxLayout(&dialog);
+        auto *description =
+            new QLabel(QStringLiteral("Снимок захватит только выбранное окно, "
+                                      "даже если оно перекрыто другим."));
+        description->setWordWrap(true);
+        layout->addWidget(description);
+        auto *list = new QListWidget(&dialog);
+        list->setSpacing(3);
+        for (const auto &value : windows) {
+          auto object = value.toObject();
+          if (object.value("pid").toInt() == QCoreApplication::applicationPid())
+            continue;
+          auto application = object.value("application").toString();
+          auto title = object.value("title").toString();
+          if (application.isEmpty() && title.isEmpty())
+            continue;
+          auto *item = new QListWidgetItem(
+              application + (title.isEmpty() ? QStringLiteral(" — без названия")
+                                             : QStringLiteral(" — ") + title),
+              list);
+          item->setData(Qt::UserRole, object.toVariantMap());
+        }
+        layout->addWidget(list, 1);
+        auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok |
+                                             QDialogButtonBox::Cancel);
+        buttons->button(QDialogButtonBox::Ok)
+            ->setText(QStringLiteral("Снять окно"));
+        buttons->button(QDialogButtonBox::Cancel)
+            ->setText(QStringLiteral("Отмена"));
+        buttons->button(QDialogButtonBox::Ok)->setEnabled(list->count() > 0);
+        layout->addWidget(buttons);
+        connect(buttons, &QDialogButtonBox::accepted, &dialog,
+                &QDialog::accept);
+        connect(buttons, &QDialogButtonBox::rejected, &dialog,
+                &QDialog::reject);
+        connect(list, &QListWidget::itemDoubleClicked, &dialog,
+                [&dialog](QListWidgetItem *) { dialog.accept(); });
+        if (list->count() > 0)
+          list->setCurrentRow(0);
+        else
+          description->setText(
+              QStringLiteral("Доступных окон нет. Откройте нужную программу и "
+                             "повторите выбор."));
+        if (dialog.exec() != QDialog::Accepted || !list->currentItem()) {
+          windowListing_ = false;
+          return;
+        }
+        auto object = QJsonObject::fromVariantMap(
+            list->currentItem()->data(Qt::UserRole).toMap());
+        QRect frame =
+            QRectF(object.value("x").toDouble(), object.value("y").toDouble(),
+                   object.value("width").toDouble(),
+                   object.value("height").toDouble())
+                .toAlignedRect();
+        QScreen *screen = nullptr;
+        for (auto *candidate : QGuiApplication::screens())
+          if (candidate->geometry().contains(frame)) {
+            screen = candidate;
+            break;
+          }
+        windowListing_ = false;
+        if (!screen) {
+          QMessageBox::information(
+              this, QStringLiteral("Окно на нескольких мониторах"),
+              QStringLiteral(
+                  "Для снимка отдельного окна переместите его целиком на один "
+                  "монитор. Либо используйте снимок области."));
+          return;
+        }
+        qint64 id = object.value("id").toVariant().toLongLong();
+        hide();
+        QTimer::singleShot(delay_->value() * 1000 + 250, this,
+                           [this, id, frame, screen] {
+                             captureWindowScreenshot(id, frame, screen);
+                           });
+      });
+  process->start(helper, QStringList{QStringLiteral("--list-windows")});
+#endif
+}
+void MainWindow::captureWindowScreenshot(qint64 windowId, const QRect &frame,
+                                         QScreen *screen) {
+#ifdef Q_OS_MACOS
+  auto temporary = std::make_shared<QTemporaryDir>();
+  if (!temporary->isValid()) {
+    show();
+    showCaptureError(
+        QStringLiteral("Не удалось создать временный файл снимка."));
+    return;
+  }
+  QString output = temporary->filePath(QStringLiteral("window.png"));
+  QString helper = QCoreApplication::applicationDirPath() +
+                   QStringLiteral("/kadrolov-capture");
+  if (!QFileInfo::exists(helper))
+    helper = QStandardPaths::findExecutable(QStringLiteral("kadrolov-capture"));
+  if (helper.isEmpty()) {
+    show();
+    showCaptureError(QStringLiteral("Не найден системный модуль снимков."));
+    return;
+  }
+  auto geometry = screen->geometry();
+  QStringList args{QStringLiteral("--screenshot"),
+                   output,
+                   QStringLiteral("--window"),
+                   QString::number(windowId),
+                   QStringLiteral("--rect"),
+                   QString("%1,%2,%3,%4")
+                       .arg(geometry.x())
+                       .arg(geometry.y())
+                       .arg(geometry.width())
+                       .arg(geometry.height()),
+                   QStringLiteral("--cursor"),
+                   screenshotCursor_->isChecked() ? QStringLiteral("1")
+                                                  : QStringLiteral("0")};
+  auto *process = new QProcess(this);
+  QTimer::singleShot(20000, process, [process] {
+    if (process->state() != QProcess::NotRunning)
+      process->kill();
+  });
+  connect(process, &QProcess::errorOccurred, this,
+          [this, process](QProcess::ProcessError error) {
+            if (error != QProcess::FailedToStart)
+              return;
+            show();
+            showCaptureError(process->errorString());
+            process->deleteLater();
+          });
+  connect(
+      process, qOverload<int, QProcess::ExitStatus>(&QProcess::finished), this,
+      [this, process, temporary, output, frame,
+       screen](int code, QProcess::ExitStatus status) {
+        QString error;
+        for (const auto &line : process->readAllStandardOutput().split('\n')) {
+          auto object = QJsonDocument::fromJson(line).object();
+          if (object.value("event").toString() == "error")
+            error = object.value("message").toString();
+        }
+        process->deleteLater();
+        QImage window(output);
+        if (code != 0 || status != QProcess::NormalExit || window.isNull()) {
+          show();
+          showCaptureError(
+              error.isEmpty()
+                  ? QStringLiteral("Выбранное окно не передало изображение. "
+                                   "Повторите выбор окна.")
+                  : error);
+          return;
+        }
+        acquireSnapshot(screen, [this, screen, frame,
+                                 window](QPixmap background) {
+          qreal scale =
+              qreal(background.width()) / qMax(1, screen->geometry().width());
+          QSize expected(qRound(frame.width() * scale),
+                         qRound(frame.height() * scale));
+          if (qAbs(window.width() - expected.width()) > 2 ||
+              qAbs(window.height() - expected.height()) > 2) {
+            show();
+            showCaptureError(QStringLiteral("Размер окна изменился во время "
+                                            "снимка. Повторите выбор окна."));
+            return;
+          }
+          QImage full = background.toImage();
+          full.setDevicePixelRatio(1);
+          QPoint local = frame.topLeft() - screen->geometry().topLeft();
+          QRectF target(local.x() * scale, local.y() * scale,
+                        frame.width() * scale, frame.height() * scale);
+          QPainter painter(&full);
+          painter.setCompositionMode(QPainter::CompositionMode_Source);
+          painter.drawImage(target, window);
+          painter.end();
+          QPixmap composite = QPixmap::fromImage(full);
+          composite.setDevicePixelRatio(scale);
+          openCaptureOverlay(screen, composite, frame, false);
+        });
+      });
+  process->start(helper, args);
+#else
+  Q_UNUSED(windowId)
+  Q_UNUSED(frame)
+  Q_UNUSED(screen)
+#endif
 }
