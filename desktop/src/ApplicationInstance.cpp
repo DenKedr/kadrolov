@@ -1,6 +1,7 @@
 #include "ApplicationInstance.h"
 #include <QCryptographicHash>
 #include <QDir>
+#include <QElapsedTimer>
 #include <QLocalSocket>
 #include <QStandardPaths>
 #include <QTimer>
@@ -21,8 +22,10 @@ ApplicationInstance::ApplicationInstance(const QString &identity,
           return;
         }
         if (buffer->contains('\n')) {
-          if (*buffer == "show\n")
+          if (*buffer == "show\n") {
             emit showRequested();
+            socket->write("ok\n");
+          }
           socket->disconnectFromServer();
         }
       };
@@ -61,10 +64,27 @@ ApplicationInstance::Result ApplicationInstance::start(bool background,
     for (int retry = 0; retry < 10; ++retry) {
       socket.connectToServer(name);
       if (socket.waitForConnected(200)) {
-        socket.write("show\n");
+        if (socket.write("show\n") != 5)
+          break;
         socket.flush();
-        if (socket.waitForBytesWritten(500) || socket.bytesToWrite() == 0)
+        // A successful pipe write alone does not prove that the primary
+        // accepted the command. Keep this connection until it acknowledges.
+        QByteArray reply;
+        QElapsedTimer deadline;
+        deadline.start();
+        while (reply.size() < 4 && deadline.elapsed() < 2000) {
+          reply += socket.read(4 - reply.size());
+          if (reply.contains('\n'))
+            break;
+          if (!socket.waitForReadyRead(
+                  qMax(1, 2000 - int(deadline.elapsed())))) {
+            reply += socket.read(4 - reply.size());
+            break;
+          }
+        }
+        if (reply == "ok\n")
           return Secondary;
+        break; // Never replay an unacknowledged show command.
       }
       socket.abort();
     }

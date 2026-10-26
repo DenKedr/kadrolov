@@ -17,12 +17,36 @@ private slots:
   void secondaryRaisesPrimaryButBackgroundDoesNot() {
     const QString id =
         "test-" + QUuid::createUuid().toString(QUuid::WithoutBraces);
-    ApplicationInstance primary(id), secondary(id), background(id);
+    ApplicationInstance primary(id);
     QCOMPARE(primary.start(false), ApplicationInstance::Primary);
     QSignalSpy show(&primary, &ApplicationInstance::showRequested);
-    QCOMPARE(secondary.start(false), ApplicationInstance::Secondary);
-    QTRY_COMPARE(show.count(), 1);
-    QCOMPARE(background.start(true), ApplicationInstance::Secondary);
+    auto runSecondary = [&](bool background) {
+      QProcess child;
+      QStringList args{"--lifecycle-secondary-child", id};
+      if (background)
+        args << "--background";
+      child.start(QCoreApplication::applicationFilePath(), args);
+      if (!child.waitForStarted())
+        return false;
+      QElapsedTimer deadline;
+      deadline.start();
+      while (child.state() != QProcess::NotRunning && deadline.elapsed() < 7000)
+        QTest::qWait(10); // Primary must accept/read while secondary waits.
+      if (child.state() != QProcess::NotRunning) {
+        child.kill();
+        child.waitForFinished();
+        return false;
+      }
+      if (child.exitStatus() != QProcess::NormalExit || child.exitCode() != 0) {
+        qWarning().noquote() << child.readAllStandardError();
+        return false;
+      }
+      return true;
+    };
+    QVERIFY2(runSecondary(false),
+             "Secondary child must receive primary acknowledgement");
+    QCOMPARE(show.count(), 1);
+    QVERIFY(runSecondary(true));
     QTest::qWait(30);
     QCOMPARE(show.count(), 1);
   }
@@ -55,6 +79,21 @@ private slots:
 };
 int main(int argc, char **argv) {
   QApplication app(argc, argv);
+  if (app.arguments().contains("--lifecycle-secondary-child")) {
+    QStandardPaths::setTestModeEnabled(true);
+    app.setApplicationName("KadrolovLifecycleTest");
+    const int index = app.arguments().indexOf("--lifecycle-secondary-child");
+    ApplicationInstance instance(app.arguments().value(index + 1));
+    QString error;
+    const auto result =
+        instance.start(app.arguments().contains("--background"), &error);
+    if (result != ApplicationInstance::Secondary) {
+      fprintf(stderr, "Secondary result=%d: %s\n", int(result),
+              qPrintable(error));
+      return 31;
+    }
+    return 0;
+  }
   if (app.arguments().contains("--lifecycle-exit-child")) {
     QStandardPaths::setTestModeEnabled(true);
     app.setApplicationName("KadrolovLifecycleChild");
