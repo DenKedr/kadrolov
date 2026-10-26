@@ -63,18 +63,21 @@ jobs:
           - runner: windows-2022
             arch: x64
             qt: '6.8.3'
+            modules: qtimageformats
             host: windows
             qtarch: win64_msvc2022_64
             cmakearch: x64
           - runner: windows-2022
             arch: x86
             qt: '5.15.2'
+            modules: ''
             host: windows
             qtarch: win32_msvc2019
             cmakearch: Win32
           - runner: windows-11-arm
             arch: arm64
             qt: '6.8.3'
+            modules: qtimageformats
             host: windows_arm64
             qtarch: win64_msvc2022_arm64
             cmakearch: ARM64
@@ -86,7 +89,7 @@ jobs:
           version: ${{ matrix.qt }}
           host: ${{ matrix.host }}
           arch: ${{ matrix.qtarch }}
-          modules: qtimageformats
+          modules: ${{ matrix.modules }}
           cache: true
       - run: cmake -S . -B build -A ${{ matrix.cmakearch }} && cmake --build build --config Release -j2
       - run: ctest --test-dir build -C Release --output-on-failure
@@ -133,6 +136,8 @@ jobs:
           distribution: temurin
           java-version: '21'
       - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools platforms;android-35 build-tools;35.0.0
       - run: ./gradlew --no-daemon --max-workers=2 :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
         working-directory: android
       - uses: actions/upload-artifact@v4
@@ -161,14 +166,7 @@ jobs:
           profile: pixel_2
           disable-animations: true
           emulator-options: -no-window -no-audio -no-snapshot -no-boot-anim -gpu swiftshader_indirect
-          script: |
-            set +e
-            cd android
-            ./gradlew --no-daemon --max-workers=2 connectedDebugAndroidTest
-            result=$?
-            mkdir -p runtime-artifacts
-            adb pull /sdcard/Android/data/ru.kadrolov.app/files/runtime-artifacts/ runtime-artifacts/ || true
-            exit "$result"
+          script: bash scripts/android-runtime.sh
       - uses: actions/upload-artifact@v4
         if: always()
         with:
