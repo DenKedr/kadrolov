@@ -13,20 +13,30 @@ jobs:
         include:
           - runner: ubuntu-24.04
             arch: x86_64
+            debarch: amd64
           - runner: ubuntu-24.04-arm
             arch: arm64
+            debarch: arm64
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get update && sudo apt-get install -y cmake ninja-build qt6-base-dev qt6-image-formats-plugins libx11-dev ffmpeg xvfb python3-dbus python3-gi gir1.2-gstreamer-1.0
+      - run: sudo apt-get update && sudo apt-get install -y cmake ninja-build dpkg-dev qt6-base-dev qt6-image-formats-plugins libx11-dev ffmpeg xvfb python3-dbus python3-gi gir1.2-gstreamer-1.0
       - run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build build -j2
       - run: xvfb-run -a ctest --test-dir build --output-on-failure
       - run: python3 -m unittest discover -s native/linux/tests -v
       - run: cmake --install build --prefix stage && tar czf kadrolov-linux-${{ matrix.arch }}.tar.gz -C stage .
+      - name: Build and test Debian installer
+        run: |
+          scripts/package-linux.sh build ${{ matrix.debarch }} dist 6
+          sudo apt-get install -y --no-install-recommends ./dist/*.deb
+          dpkg-query -W kadrolov
+          sudo apt-get remove -y kadrolov
       - uses: actions/upload-artifact@v4
         with:
           name: kadrolov-linux-${{ matrix.arch }}
-          path: kadrolov-linux-${{ matrix.arch }}.tar.gz
+          path: |
+            kadrolov-linux-${{ matrix.arch }}.tar.gz
+            dist/*.deb
   linux-legacy:
     strategy:
       fail-fast: false
@@ -34,9 +44,11 @@ jobs:
       matrix:
         include:
           - arch: x86
+            debarch: i386
             platform: linux/386
             image: i386/debian:bookworm
           - arch: armv7
+            debarch: armhf
             platform: linux/arm/v7
             image: arm32v7/debian:bookworm
     runs-on: ubuntu-24.04
@@ -49,11 +61,13 @@ jobs:
       - name: Build Qt5 legacy architecture
         run: >-
           docker run --rm --platform '${{ matrix.platform }}' -v "$PWD:/src" -w /src '${{ matrix.image }}'
-          bash -c 'apt-get update && apt-get install -y build-essential cmake ninja-build qtbase5-dev libqt5svg5-dev libx11-dev xvfb ffmpeg python3 && cmake -S . -B build-legacy -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build build-legacy -j2 && xvfb-run -a ctest --test-dir build-legacy --output-on-failure && cmake --install build-legacy --prefix stage-legacy && tar czf kadrolov-linux-${{ matrix.arch }}.tar.gz -C stage-legacy .'
+          bash -c 'apt-get update && apt-get install -y build-essential cmake ninja-build qtbase5-dev libqt5svg5-dev qt5-image-formats-plugins libx11-dev xvfb ffmpeg python3 && cmake -S . -B build-legacy -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build build-legacy -j2 && xvfb-run -a ctest --test-dir build-legacy --output-on-failure && cmake --install build-legacy --prefix stage-legacy && tar czf kadrolov-linux-${{ matrix.arch }}.tar.gz -C stage-legacy . && scripts/package-linux.sh build-legacy ${{ matrix.debarch }} dist 5 && dpkg -i dist/*.deb && dpkg-query -W kadrolov && dpkg --remove kadrolov'
       - uses: actions/upload-artifact@v4
         with:
           name: kadrolov-linux-${{ matrix.arch }}
-          path: kadrolov-linux-${{ matrix.arch }}.tar.gz
+          path: |
+            kadrolov-linux-${{ matrix.arch }}.tar.gz
+            dist/*.deb
   windows:
     strategy:
       fail-fast: false
@@ -104,10 +118,30 @@ jobs:
           Copy-Item README.md,LICENSE,THIRD_PARTY.md stage/
           Copy-Item licenses stage/licenses -Recurse
           Compress-Archive -Path stage/* -DestinationPath kadrolov-windows-${{ matrix.arch }}.zip
+      - name: Build and test Windows installer
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (!(Test-Path $iscc)) {
+            choco install innosetup --no-progress -y
+            if ($LASTEXITCODE -ne 0) { throw "Inno Setup installation failed" }
+          }
+          New-Item -ItemType Directory -Path dist -Force | Out-Null
+          & $iscc "/DStageDir=$((Resolve-Path stage).Path)" "/DOutputDir=$((Resolve-Path dist).Path)" "/DTargetArch=${{ matrix.arch }}" packaging/windows/kadrolov.iss
+          if ($LASTEXITCODE -ne 0) { throw "Installer compilation failed" }
+          $setup = (Resolve-Path "dist/kadrolov-windows-${{ matrix.arch }}-setup.exe").Path
+          $installed = Join-Path $env:RUNNER_TEMP "kadrolov-installed"
+          $result = Start-Process $setup -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR=`"$installed`"" -Wait -PassThru
+          if ($result.ExitCode -ne 0) { throw "Installer failed: $($result.ExitCode)" }
+          if (!(Test-Path "$installed/kadrolov.exe") -or !(Test-Path "$installed/kadrolov-capture.exe")) { throw "Installed payload missing" }
+          $result = Start-Process "$installed/unins000.exe" -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART" -Wait -PassThru
+          if ($result.ExitCode -ne 0 -or (Test-Path "$installed/kadrolov.exe")) { throw "Uninstall failed" }
       - uses: actions/upload-artifact@v4
         with:
           name: kadrolov-windows-${{ matrix.arch }}
-          path: kadrolov-windows-${{ matrix.arch }}.zip
+          path: |
+            kadrolov-windows-${{ matrix.arch }}.zip
+            dist/*.exe
   macos:
     strategy:
       fail-fast: false
@@ -129,11 +163,13 @@ jobs:
           cache: true
       - run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0 -DCMAKE_OSX_ARCHITECTURES=${{ matrix.arch }} -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR" && cmake --build build -j2
       - run: QT_QPA_PLATFORM=offscreen ctest --test-dir build --output-on-failure && native/macos/tests/run.sh
-      - run: QT_BASE_DIR="$QT_ROOT_DIR" scripts/package-macos.sh build kadrolov-macos-${{ matrix.arch }}.zip
+      - run: QT_BASE_DIR="$QT_ROOT_DIR" scripts/package-macos.sh build kadrolov-macos-${{ matrix.arch }}.zip kadrolov-macos-${{ matrix.arch }}.dmg
       - uses: actions/upload-artifact@v4
         with:
           name: kadrolov-macos-${{ matrix.arch }}
-          path: kadrolov-macos-${{ matrix.arch }}.zip
+          path: |
+            kadrolov-macos-${{ matrix.arch }}.zip
+            kadrolov-macos-${{ matrix.arch }}.dmg
   android:
     runs-on: ubuntu-24.04
     steps:
@@ -145,12 +181,16 @@ jobs:
       - uses: android-actions/setup-android@v3
         with:
           packages: platform-tools platforms;android-35 build-tools;35.0.0
-      - run: ./gradlew --no-daemon --max-workers=2 :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
+      - run: ./gradlew --no-daemon --max-workers=2 :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleRelease
         working-directory: android
       - uses: actions/upload-artifact@v4
         with:
           name: kadrolov-android-all-architectures
           path: android/app/build/outputs/apk/debug/*.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kadrolov-android-unsigned-release
+          path: android/app/build/outputs/apk/release/*-unsigned.apk
   android-runtime:
     runs-on: ubuntu-24.04
     timeout-minutes: 35
