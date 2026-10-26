@@ -1,0 +1,179 @@
+name: Build Kadrolov
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            arch: x86_64
+          - runner: ubuntu-24.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y cmake ninja-build qt6-base-dev qt6-image-formats-plugins libx11-dev ffmpeg xvfb python3-dbus python3-gi gir1.2-gstreamer-1.0
+      - run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build build -j2
+      - run: xvfb-run -a ctest --test-dir build --output-on-failure
+      - run: python3 -m unittest discover -s native/linux/tests -v
+      - run: cmake --install build --prefix stage && tar czf kadrolov-linux-${{ matrix.arch }}.tar.gz -C stage .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kadrolov-linux-${{ matrix.arch }}
+          path: kadrolov-linux-${{ matrix.arch }}.tar.gz
+  linux-legacy:
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        include:
+          - arch: x86
+            platform: linux/386
+            image: i386/debian:bookworm
+          - arch: armv7
+            platform: linux/arm/v7
+            image: arm32v7/debian:bookworm
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+        if: matrix.arch == 'armv7'
+        with:
+          platforms: arm
+      - name: Build Qt5 legacy architecture
+        run: >-
+          docker run --rm --platform '${{ matrix.platform }}' -v "$PWD:/src" -w /src '${{ matrix.image }}'
+          bash -c 'apt-get update && apt-get install -y build-essential cmake ninja-build qtbase5-dev libqt5svg5-dev libx11-dev xvfb ffmpeg python3 && cmake -S . -B build-legacy -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build build-legacy -j2 && xvfb-run -a ctest --test-dir build-legacy --output-on-failure && cmake --install build-legacy --prefix stage-legacy && tar czf kadrolov-linux-${{ matrix.arch }}.tar.gz -C stage-legacy .'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kadrolov-linux-${{ matrix.arch }}
+          path: kadrolov-linux-${{ matrix.arch }}.tar.gz
+  windows:
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        include:
+          - runner: windows-2022
+            arch: x64
+            qt: '6.8.3'
+            host: windows
+            qtarch: win64_msvc2022_64
+            cmakearch: x64
+          - runner: windows-2022
+            arch: x86
+            qt: '5.15.2'
+            host: windows
+            qtarch: win32_msvc2019
+            cmakearch: Win32
+          - runner: windows-11-arm
+            arch: arm64
+            qt: '6.8.3'
+            host: windows_arm64
+            qtarch: win64_msvc2022_arm64
+            cmakearch: ARM64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ matrix.qt }}
+          host: ${{ matrix.host }}
+          arch: ${{ matrix.qtarch }}
+          modules: qtimageformats
+          cache: true
+      - run: cmake -S . -B build -A ${{ matrix.cmakearch }} && cmake --build build --config Release -j2
+      - run: ctest --test-dir build -C Release --output-on-failure
+      - name: Package portable application
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path stage | Out-Null
+          Copy-Item build/Release/kadrolov.exe stage/
+          Copy-Item build/Release/kadrolov-audio.exe stage/
+          Copy-Item build/Release/kadrolov-capture.exe stage/
+          windeployqt --release --no-translations stage/kadrolov.exe
+          Copy-Item README.md,LICENSE,THIRD_PARTY.md stage/
+          Compress-Archive -Path stage/* -DestinationPath kadrolov-windows-${{ matrix.arch }}.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kadrolov-windows-${{ matrix.arch }}
+          path: kadrolov-windows-${{ matrix.arch }}.zip
+  macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+          - runner: macos-15-intel
+            arch: x86_64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install qtbase qtimageformats cmake ninja
+      - run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$(brew --prefix qtbase)" && cmake --build build -j2
+      - run: QT_QPA_PLATFORM=offscreen ctest --test-dir build --output-on-failure && native/macos/tests/run.sh
+      - run: scripts/package-macos.sh build kadrolov-macos-${{ matrix.arch }}.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kadrolov-macos-${{ matrix.arch }}
+          path: kadrolov-macos-${{ matrix.arch }}.zip
+  android:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+      - run: ./gradlew --no-daemon --max-workers=2 :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
+        working-directory: android
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kadrolov-android-all-architectures
+          path: android/app/build/outputs/apk/debug/*.apk
+  android-runtime:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          emulator-options: -no-window -no-audio -no-snapshot -no-boot-anim -gpu swiftshader_indirect
+          script: |
+            set +e
+            cd android
+            ./gradlew --no-daemon --max-workers=2 connectedDebugAndroidTest
+            result=$?
+            mkdir -p runtime-artifacts
+            adb pull /sdcard/Android/data/ru.kadrolov.app/files/runtime-artifacts/ runtime-artifacts/ || true
+            exit "$result"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-runtime-results
+          path: |
+            android/app/build/reports/androidTests/connected/
+            android/app/build/outputs/androidTest-results/connected/
+            android/runtime-artifacts/
