@@ -29,6 +29,7 @@ class EditorActivity : Activity() {
             android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
             android.content.res.Configuration.UI_MODE_NIGHT_YES)
     if (dark) setTheme(android.R.style.Theme_Material_NoActionBar)
+    else setTheme(R.style.AppTheme_LightComfort)
     super.onCreate(state)
     val path = intent.getStringExtra("path") ?: return finish()
     sourceFile = File(path)
@@ -37,7 +38,7 @@ class EditorActivity : Activity() {
       LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
         setPadding(8, 8, 8, 8)
-        setBackgroundColor(if (dark) 0xFF18181B.toInt() else 0xFFFFFBF5.toInt())
+        setBackgroundColor(if (dark) 0xFF18181B.toInt() else 0xFFEDE9E2.toInt())
       }
     setContentView(box)
     status =

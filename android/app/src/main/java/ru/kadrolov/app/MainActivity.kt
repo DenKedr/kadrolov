@@ -78,6 +78,7 @@ class MainActivity : Activity() {
             android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
             android.content.res.Configuration.UI_MODE_NIGHT_YES)
     if (dark) setTheme(android.R.style.Theme_Material_NoActionBar)
+    else setTheme(R.style.AppTheme_LightComfort)
     super.onCreate(savedInstanceState)
     buildUi()
     if (
@@ -101,7 +102,7 @@ class MainActivity : Activity() {
       LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
         setPadding(dp(20), dp(20), dp(20), dp(32))
-        setBackgroundColor(if (dark()) 0xFF18181B.toInt() else 0xFFFFFBF5.toInt())
+        setBackgroundColor(if (dark()) 0xFF18181B.toInt() else 0xFFEDE9E2.toInt())
       }
     scroll.addView(box)
     setContentView(scroll)

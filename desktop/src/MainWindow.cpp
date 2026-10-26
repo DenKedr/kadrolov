@@ -490,16 +490,39 @@ MainWindow::MainWindow(QWidget *p)
   setl->addWidget(hotkeyStatus_);
   setl->addStretch();
   tabs_->addTab(scrollPage(settingsPage), QStringLiteral("Настройки"));
-  auto applyTheme = [this] {
-    bool dark =
-        theme_->currentData().toString() == "dark" ||
-        (theme_->currentIndex() == 0 &&
-         QApplication::palette().color(QPalette::Window).lightness() < 128);
-    QString bg = dark ? "#191B20" : "#F6F5F1",
-            surface = dark ? "#24272E" : "#FFFFFF",
-            text = dark ? "#F4F4F5" : "#20242B",
-            muted = dark ? "#B3B7C2" : "#606671",
-            border = dark ? "#454A55" : "#D8D9DD";
+  const QPalette systemPalette = QApplication::palette();
+  auto applyTheme = [this, systemPalette] {
+    bool dark = theme_->currentData().toString() == "dark" ||
+                (theme_->currentIndex() == 0 &&
+                 systemPalette.color(QPalette::Window).lightness() < 128);
+    QString bg = dark ? "#191B20" : "#ECEEF1",
+            surface = dark ? "#24272E" : "#F7F8FA",
+            text = dark ? "#F4F4F5" : "#252B35",
+            muted = dark ? "#B3B7C2" : "#555F6E",
+            border = dark ? "#454A55" : "#ABB3BF";
+    QPalette palette = systemPalette;
+    if (!dark) {
+      palette.setColor(QPalette::Window, QColor(bg));
+      palette.setColor(QPalette::WindowText, QColor(text));
+      palette.setColor(QPalette::Base, QColor(surface));
+      palette.setColor(QPalette::AlternateBase, QColor(bg));
+      palette.setColor(QPalette::Text, QColor(text));
+      palette.setColor(QPalette::Button, QColor(surface));
+      palette.setColor(QPalette::ButtonText, QColor(text));
+      palette.setColor(QPalette::Light, QColor("#FFFFFF"));
+      palette.setColor(QPalette::Midlight, QColor("#E4E8EE"));
+      palette.setColor(QPalette::Mid, QColor("#ABB3BF"));
+      palette.setColor(QPalette::Dark, QColor("#7A8798"));
+      palette.setColor(QPalette::Shadow, QColor("#46566C"));
+      palette.setColor(QPalette::ToolTipBase, QColor(surface));
+      palette.setColor(QPalette::ToolTipText, QColor(text));
+      palette.setColor(QPalette::Highlight, QColor("#DDE7F3"));
+      palette.setColor(QPalette::HighlightedText, QColor("#202C3D"));
+      palette.setColor(QPalette::Disabled, QPalette::Text, QColor("#697483"));
+      palette.setColor(QPalette::Disabled, QPalette::ButtonText,
+                       QColor("#697483"));
+    }
+    qApp->setPalette(palette);
     qApp->setStyleSheet(
         QString(
             "QWidget{font-size:14px;color:%1;} "
@@ -529,6 +552,57 @@ MainWindow::MainWindow(QWidget *p)
             "QToolButton:checked{background:#C2410C;color:white;} "
             "QLabel{background:transparent;}")
             .arg(text, bg, surface, muted, border));
+    if (!dark)
+      qApp->setStyleSheet(
+          qApp->styleSheet() +
+          QStringLiteral(
+              "QScrollArea,QScrollArea>QWidget>QWidget,QStackedWidget{"
+              "background:#ECEEF1;} "
+              "QComboBox:focus,QLineEdit:focus,QSpinBox:focus,QKeySequenceEdit:"
+              "focus{border:2px solid #647F9F;} "
+              "QComboBox::drop-down{width:24px;border-left:1px solid #ABB3BF;} "
+              "QComboBox "
+              "QAbstractItemView,QMenu{background:#F7F8FA;color:#252B35;"
+              "border:1px solid "
+              "#ABB3BF;selection-background-color:#DDE7F3;selection-color:#"
+              "202C3D;} "
+              "QMenu::item:selected,QListWidget::item:selected{background:#"
+              "DDE7F3;color:#202C3D;} "
+              "QLineEdit,QSpinBox{selection-background-color:#DDE7F3;selection-"
+              "color:#202C3D;} "
+              "QComboBox:disabled,QLineEdit:disabled,QSpinBox:disabled,"
+              "QPushButton:disabled,"
+              "QPushButton#primary:disabled{background:#E2E5EA;color:#697483;"
+              "border:1px solid #BCC3CD;} "
+              "QCheckBox:disabled,#muted:disabled{color:#697483;} "
+              "QCheckBox::indicator{width:18px;height:18px;border:1px solid "
+              "#7A8798;border-radius:4px;background:#F7F8FA;} "
+              "QCheckBox::indicator:hover{border:1px solid "
+              "#46566C;background:#E8EDF3;} "
+              "QCheckBox::indicator:checked{background:#A9380A;border:1px "
+              "solid #8D3009;image:url(:/icons/light-check.xpm);} "
+              "QCheckBox::indicator:disabled{background:#E2E5EA;border:1px "
+              "solid #A2ACBA;} "
+              "QCheckBox::indicator:checked:disabled{background:#798696;image:"
+              "url(:/icons/light-check.xpm);} "
+              "QComboBox{padding-right:30px;} "
+              "QComboBox::down-arrow{image:url(:/icons/"
+              "light-chevron-down.xpm);width:12px;height:8px;} "
+              "QSpinBox::up-button,QSpinBox::down-button{width:22px;border-"
+              "left:1px solid #ABB3BF;background:#E8EDF3;} "
+              "QSpinBox::up-button:hover,QSpinBox::down-button:hover{"
+              "background:#DDE3EB;} "
+              "QSpinBox::up-arrow{image:url(:/icons/"
+              "light-chevron-up.xpm);width:10px;height:6px;} "
+              "QSpinBox::down-arrow{image:url(:/icons/"
+              "light-chevron-down.xpm);width:10px;height:6px;} "
+              "QPushButton:hover{background:#E8EDF3;} "
+              "QPushButton:pressed{background:#DDE3EB;} "
+              "QPushButton#primary:hover{background:#A9380A;color:white;} "
+              "QPushButton#primary:pressed{background:#8D3009;color:white;} "
+              "QTabBar::tab:!selected:hover{background:#E1E5EB;} "
+              "QToolTip{background:#F7F8FA;color:#252B35;border:1px solid "
+              "#ABB3BF;}"));
   };
   connect(theme_, qOverload<int>(&QComboBox::currentIndexChanged), this,
           [this, applyTheme] {
@@ -1150,11 +1224,12 @@ void MainWindow::requestExit() {
     return;
   const auto state = recorder_->state();
   if (state != Recorder::Idle && state != Recorder::Failed) {
-    QMessageBox question(QMessageBox::Question,
-                         QStringLiteral("Завершить Кадролов?"),
-                         QStringLiteral("Остановить запись, сохранить видео и выйти?"),
-                         QMessageBox::Yes | QMessageBox::Cancel, this);
-    question.button(QMessageBox::Yes)->setText(QStringLiteral("Сохранить и выйти"));
+    QMessageBox question(
+        QMessageBox::Question, QStringLiteral("Завершить Кадролов?"),
+        QStringLiteral("Остановить запись, сохранить видео и выйти?"),
+        QMessageBox::Yes | QMessageBox::Cancel, this);
+    question.button(QMessageBox::Yes)
+        ->setText(QStringLiteral("Сохранить и выйти"));
     question.button(QMessageBox::Cancel)->setText(QStringLiteral("Отмена"));
     question.setDefaultButton(QMessageBox::Cancel);
     if (question.exec() != QMessageBox::Yes)

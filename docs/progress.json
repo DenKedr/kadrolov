@@ -1,14 +1,15 @@
 {
-  "status": "implementation_in_progress",
-  "github": "not_published_yet",
-  "desktop": "ARM64 build and core capture tested; latest overlay undergoing GUI verification",
-  "android": "APK built 4ABI, unit6, lint0errors; runtime emulator test being prepared",
-  "windows": "native MP4 H264AAC capture with system/mic/mix/camera, CI compilation pending",
-  "linux": "X11 FFmpeg and Wayland portal backend; runtime pending",
+  "status": "release_0.1.1_verification",
+  "github": "https://github.com/DenKedr/kadrolov/releases/tag/v0.1.0",
+  "current_public_release": "0.1.0",
+  "next_release": "0.1.1",
+  "desktop": "Background lifecycle and hidden startup verified on Mac; light theme visual check passed, explicit checkbox/chevrons fixed. Final cross-platform release build pending.",
+  "android": "Signed release 0.1.1 with improved light theme; 6unit/lint passed. API35 2/2 runtime tests passed before palette-only update; final CI pending.",
+  "windows": "0.1.1 IPC regression, EXE install/uninstall passed x64/x86/ARM64 in run40411543792; rebuilding with light theme.",
+  "linux": "0.1.0 DEB4 published; 0.1.1 platform builds/lifecycle tests in CI.",
   "remaining": [
-    "CI all target architectures",
-    "GUI overlay/hotkey/autostart checks",
-    "artifact packaging",
-    "remaining matrix functions"
+    "Final 0.1.1 CI/installers with light theme",
+    "Publish 0.1.1 assets and verify digests",
+    "Physical non-Mac devices and remaining partial features are listed in features.csv"
   ]
 }

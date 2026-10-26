@@ -1,1 +1,1 @@
-<RCC><qresource prefix="/icons"><file alias="kadrolov.png">../assets/icons/kadrolov-256.png</file></qresource></RCC>
+<RCC><qresource prefix="/icons"><file alias="kadrolov.png">../assets/icons/kadrolov-256.png</file><file alias="light-chevron-down.xpm">../assets/icons/light-chevron-down.xpm</file><file alias="light-chevron-up.xpm">../assets/icons/light-chevron-up.xpm</file><file alias="light-check.xpm">../assets/icons/light-check.xpm</file></qresource></RCC>
