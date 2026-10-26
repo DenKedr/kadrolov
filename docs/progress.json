@@ -1,15 +1,17 @@
 {
-  "status": "release_0.1.1_verification",
-  "github": "https://github.com/DenKedr/kadrolov/releases/tag/v0.1.0",
-  "current_public_release": "0.1.0",
-  "next_release": "0.1.1",
-  "desktop": "Background lifecycle and hidden startup verified on Mac; light theme visual check passed, explicit checkbox/chevrons fixed. Final cross-platform release build pending.",
-  "android": "Signed release 0.1.1 with improved light theme; 6unit/lint passed. API35 2/2 runtime tests passed before palette-only update; final CI pending.",
-  "windows": "0.1.1 IPC regression, EXE install/uninstall passed x64/x86/ARM64 in run40411543792; rebuilding with light theme.",
-  "linux": "0.1.0 DEB4 published; 0.1.1 platform builds/lifecycle tests in CI.",
+  "status": "published_pre_release",
+  "github": "https://github.com/DenKedr/kadrolov/releases/tag/v0.1.1",
+  "current_public_release": "0.1.1",
+  "desktop": "Mac M1 GUI/background/autostart/light verified; all desktop architectures3CTest suites pass, lifecycle8 cases.",
+  "android": "Signed4ABI release0.1.1/code2;6unit/lint passed; API35 emulator2/2 tests including Activity destruction/background recording.",
+  "windows": "EXE x64/x86/ARM64 build/test/install/uninstall passed and published.",
+  "linux": "DEB amd64/arm64/i386/armhf build/test/install/remove passed in Debian12 and published.",
   "remaining": [
-    "Final 0.1.1 CI/installers with light theme",
-    "Publish 0.1.1 assets and verify digests",
-    "Physical non-Mac devices and remaining partial features are listed in features.csv"
-  ]
+    "Physical Windows/Linux/Android and macOS Intel/13/14 capture tests",
+    "Remaining partial features are tracked in features.csv"
+  ],
+  "source_commit": "5bf24723df9dbd0d01551f1caceb50fa436917e9",
+  "ci": "https://github.com/DenKedr/kadrolov/actions/runs/40412804523",
+  "ci_jobs_passed": 11,
+  "published_assets": 23
 }

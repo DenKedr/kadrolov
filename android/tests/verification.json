@@ -1,9 +1,9 @@
 {
   "status": "built_and_static_checked",
   "runtime_device_tested": false,
-  "apk": "app-debug.apk",
-  "apk_bytes": 35540911,
-  "apk_sha256": "7486e3a94e2b92de16b4f51126cab16fc47b410411f734f411f256c9eb33852f",
+  "apk": "kadrolov-android.apk",
+  "apk_bytes": 34843824,
+  "apk_sha256": "506660eea36578868e02249a1c4f9d287c441abc194edb07429f1fc3e106511b",
   "abis": [
     "arm64-v8a",
     "armeabi-v7a",
