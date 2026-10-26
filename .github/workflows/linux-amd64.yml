@@ -1,6 +1,12 @@
 name: Linux amd64 installer fallback
 on:
   workflow_dispatch:
+    inputs:
+      source_ref:
+        description: 'Branch, tag or commit to package (empty means dispatched ref)'
+        type: string
+        required: false
+        default: ''
 permissions:
   contents: read
 jobs:
@@ -10,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: v0.1.0
+          ref: ${{ inputs.source_ref || github.ref }}
       - name: Build and test in clean Debian environment
         run: >-
           docker run --rm -v "$PWD:/src" -w /src debian:bookworm
