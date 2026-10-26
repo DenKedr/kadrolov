@@ -1,6 +1,8 @@
 package ru.kadrolov.app
 
 import android.Manifest
+import android.app.Notification
+import android.app.NotificationManager
 import android.content.Intent
 import android.graphics.BitmapFactory
 import android.media.MediaExtractor
@@ -10,6 +12,8 @@ import android.net.Uri
 import android.os.Build
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
+import androidx.test.runner.lifecycle.Stage
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.BySelector
 import androidx.test.uiautomator.Condition
@@ -123,11 +127,31 @@ class CaptureRuntimeTest {
     context.startActivity(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     visible(By.text(Pattern.compile("Идёт запись · .*")))
     await("At least two seconds of encoded activity", 20_000) { CaptureState.elapsedMs >= 2_000 }
+    val beforeClose = CaptureState.elapsedMs
+    var closedActivity: MainActivity? = null
+    instrumentation.runOnMainSync {
+      closedActivity = ActivityLifecycleMonitorRegistry.getInstance()
+        .getActivitiesInStage(Stage.RESUMED).filterIsInstance<MainActivity>().single()
+      closedActivity!!.finish()
+    }
+    await("Recording Activity is actually destroyed") { closedActivity?.isDestroyed == true }
+    assertTrue("Capture retains its ongoing foreground notification while Activity is closed",
+      context.getSystemService(NotificationManager::class.java).activeNotifications.any {
+        it.id == 1 && it.notification.flags and Notification.FLAG_FOREGROUND_SERVICE != 0 &&
+          it.notification.flags and Notification.FLAG_ONGOING_EVENT != 0
+      })
+    await("Recording progresses with Activity destroyed", 20_000) {
+      CaptureState.state == "recording" && CaptureState.elapsedMs >= beforeClose + 2_000
+    }
+    assertTrue("Main Activity stays destroyed while the service records", closedActivity!!.isDestroyed)
+    context.startActivity(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    visible(By.text(Pattern.compile("Идёт запись · .*")))
     visible(label("Пауза").clazz("android.widget.Button")).click()
     visible(By.text(Pattern.compile("Пауза · .*")))
+    val beforeResume = CaptureState.elapsedMs
     visible(label("Продолжить").clazz("android.widget.Button")).click()
     visible(By.text(Pattern.compile("Идёт запись · .*")))
-    await("Recording progresses after resume", 20_000) { CaptureState.elapsedMs >= 4_000 }
+    await("Recording progresses after resume", 20_000) { CaptureState.elapsedMs >= beforeResume + 2_000 }
     visible(label("Стоп").clazz("android.widget.Button")).click()
     visible(label("Видео сохранено"))
     val uri = newMedia("video/")

@@ -24,9 +24,14 @@ public:
 public slots:
   void takeScreenshot();
   void startRecording();
+  void showExistingWindow();
+  void requestExit();
+signals:
+  void exitReady();
 
 protected:
   void closeEvent(QCloseEvent *) override;
+  bool eventFilter(QObject *, QEvent *) override;
 
 private:
   void acquireSnapshot(QScreen *, std::function<void(QPixmap)>);
@@ -50,6 +55,8 @@ private:
   void updateSummary();
   void savePreferences();
   QScreen *selectedScreen(bool video) const;
+  bool dockActivationArmed_ = false;
+  bool exitAfterSave_ = false, exitAllowed_ = false;
   bool permissionRequestRunning_ = false, windowListing_ = false;
   GlobalHotkeys *hotkeys_ = nullptr;
   QKeySequenceEdit *screenshotKeys_, *videoKeys_;

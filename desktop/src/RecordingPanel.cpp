@@ -198,6 +198,11 @@ void RecordingPanel::mouseReleaseEvent(QMouseEvent *event) {
   }
 }
 void RecordingPanel::closeEvent(QCloseEvent *event) {
+  if (qApp->isSavingSession()) {
+    frame_->hide();
+    QWidget::closeEvent(event);
+    return;
+  }
   if (recorder_->state() == Recorder::Recording ||
       recorder_->state() == Recorder::Paused ||
       recorder_->state() == Recorder::Starting ||

@@ -10,7 +10,7 @@
   #define TargetArch "x64"
 #endif
 #ifndef AppVersion
-  #define AppVersion "0.1.0"
+  #define AppVersion "0.1.1"
 #endif
 #if TargetArch != "x64" && TargetArch != "x86" && TargetArch != "arm64"
   #error Unsupported TargetArch: use x64, x86 or arm64

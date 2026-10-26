@@ -1,23 +1,23 @@
 id,feature,priority,platform,status,notes
-S01,Снимок экрана/монитора,must,desktop+android,implemented_unverified,API ОС
-S02,Выбор прямоугольной области,must,desktop+android,implemented_unverified,Android: после системного захвата/обрезки
+S01,Снимок экрана/монитора,must,desktop+android,implemented_partially_verified,Mac GUI: реальный снимок окон; Android API35 эмулятор: снимок сохранён и декодирован. Остальные ОС требуют аппаратной проверки.
+S02,Выбор прямоугольной области,must,desktop+android,implemented_partially_verified,"Mac GUI: выделение 300×200, стрелка/текст и PNG. Android: после системного захвата/обрезки."
 S03,Снимок отдельного окна,must,desktop,partial,macOS: UI picker + нативный снимок отдельного окна. Windows/X11: отдельный picker пока отсутствует; Wayland: системный выбор.
 S04,Курсор на снимке вкл/выкл,must,desktop,implemented_unverified,Платформенный адаптер
 S05,Задержка и повтор области,should,desktop,implemented_unverified,
-E01,Текст и настройка шрифта,must,all,implemented_unverified,
-E02,Стрелки/линии/прямоугольники,must,all,implemented_unverified,
+E01,Текст и настройка шрифта,must,all,implemented_partially_verified,Mac GUI: ввод русского текста; QtTest: свойства текста/экспорт без выделения и каретки. Другие ОС аппаратно не проверены.
+E02,Стрелки/линии/прямоугольники,must,all,implemented_partially_verified,Mac GUI: стрелка; QtTest: формы/undo/redo. Все сборки компилируют редактор.
 E03,Круги/овалы,must,all,implemented_unverified,
 E04,Цвет/толщина/прозрачность,must,all,implemented_unverified,
 E05,Карандаш/маркер/нумерация,must,all,implemented_unverified,Из функций референса
 E06,Размытие/пикселизация,must,all,implemented_unverified,Экспорт заменяет пиксели
 E07,Отмена/повтор/перемещение/удаление,must,all,implemented_unverified,
-E08,Обрезка и экспорт PNG/JPEG/WebP,must,all,implemented_unverified,
-V01,Запись экрана/окна/области,must,all,implemented_unverified,Системный выбор источника
-V02,Системный звук вкл/выкл,must,all,implemented_unverified,Android10+; запреты источника сохраняются
-V03,Микрофон и смешивание звука,must,all,implemented_unverified,Явный выбор устройств
+E08,Обрезка и экспорт PNG/JPEG/WebP,must,all,implemented_partially_verified,Mac GUI: PNG сохранён и декодирован; QtTest: область/обрезка/экспорт без рамки. JPEG/WebP требуют доступных image-format plugins.
+V01,Запись экрана/окна/области,must,all,implemented_partially_verified,Mac: native и Qt GUI запись области 600×400 прошли декодирование; Android API35: MP4 читается. Окна: macOS helper/Wayland portal; Windows/X11 отдельный picker отсутствует.
+V02,Системный звук вкл/выкл,must,all,implemented_partially_verified,Mac: native system/both buffers и полное декодирование. Android10+ зависит от запрета источника; на физических телефонах не проверено.
+V03,Микрофон и смешивание звука,must,all,implemented_partially_verified,"Mac: native mic/both, выбранный device и mix двух тонов проверены. Пикер устройства реализован на всех платформах; другие ОС аппаратно не проверены."
 V04,Курсор в видео вкл/выкл,must,desktop,implemented_unverified,Android согласно API ОС
 V05,Круги кликов вкл/выкл,must,desktop,implemented_unverified,"Android global taps: ограничено ОС, альтернативное поведение требует согласования"
-V06,Пауза/продолжение/остановка,must,all,implemented_unverified,
+V06,Пауза/продолжение/остановка,must,all,implemented_partially_verified,Mac GUI мини-панель pause/resume/stop: итоговый MP4 42.573 с декодируется. Android эмулятор: обе кнопки и читаемый MP4. Другие устройства не проверены.
 V07,FPS/размер/качество/формат,must,all,implemented_unverified,Список по доступным кодировщикам
 V08,Веб-камера поверх записи,must,all,implemented_unverified,Из функций референса
 V09,Обрезка начала/конца видео,must,all,implemented_unverified,Новая копия
@@ -34,12 +34,12 @@ C01,Сервер загрузок и короткие ссылки,must,client+s
 C02,Страница просмотра и скачивание,must,web,excluded_by_user,"По уточнению Дениса: только устройство, без сервера/облака/внешнего ИИ."
 C03,Срок хранения/удаление/квоты,must,server,excluded_by_user,"По уточнению Дениса: только устройство, без сервера/облака/внешнего ИИ."
 C04,Загрузка во время записи,should,all,excluded_by_user,"По уточнению Дениса: только устройство, без сервера/облака/внешнего ИИ."
-B01,Windows x64/ARM64/x86-32,must,build,ci_built_tested,Windows x64/ARM64/x86: сборка и QtTest прошли в GitHub Actions; захват на физических устройствах не проверен.
-B02,Linux x64/ARM64/x86-32/ARMv7,must,build,ci_built_tested,Linux x64/ARM64/x86/ARMv7: сборка и QtTest прошли в Actions c0c75b1; последние исправления проходят повторный CI. Нет ручной Wayland-проверки.
-B03,macOS ARM64/x64,must,build,ci_built_tested,ARM64 и Intel: CI сборка/тесты прошли. Mac M1: реальные native записи и Qt Recorder проверены; полный GUI проверяется. 32-bit macOS недоступна.
-B04,Android ARM32/ARM64/x86/x64,must,build,apk_built_runtime_in_progress,APK4ABI собран;6JUnit/lint/16KB/OCR прошли. Эмулятор API35 проверяется отдельно; физическое устройство не проверено.
-B05,GitHub исходники/CI/руководство/сборки,must,delivery,published_source_ci,GitHub DenKedr/kadrolov публичен; матрицаCI работает; подготовка пакетовRelease.
-UX01,Всплывающая панель иконок под рамкой снимка,must,desktop,implemented_partially_verified,QtTest geometry/export/undo прошли Qt5/6. StandaloneMac overlay открылся; ручное выделение проверяется.
-UX02,Компактная иконная мини-панель стоп/пауза/продолжить,must,all,implemented_unverified,Desktop toolbar и Android overlay/notification: стоп/пауза/продолжение. Реальные nativeMac pause/resume проверены; GUI-проверка продолжается.
+B01,Windows x64/ARM64/x86-32,must,build,ci_built_installed_tested,Windows x64/ARM64/x86: сборка/QtTest/EXE silent install+uninstall прошли. Аппаратный захват отдельно не проверен.
+B02,Linux x64/ARM64/x86-32/ARMv7,must,build,ci_built_installed_tested,Linux amd64/arm64/i386/armhf: сборка/QtTest/DEB install+remove прошли. AMD64 Debian12 fallback; ARM64 Ubuntu24; legacy Debian12. Нет ручной Wayland-проверки.
+B03,macOS ARM64/x64,must,build,ci_built_tested,"Mac ARM64/Intel: ZIP+DMG собраны, подпись и образ проверены. M1 GUI снимка/видео и native audio/OCR проверены. Mac13/14/Intel аппаратно не проверены."
+B04,Android ARM32/ARM64/x86/x64,must,build,release_apk_signed_emulator_tested,"Release APK подписан постоянным ключом,4 ABI/OCR/16 KB проверены. Эмулятор API35: снимок+видео,2 теста, 0 пропусков. Физический телефон не проверен."
+B05,GitHub исходники/CI/руководство/сборки,must,delivery,published,"GitHub DenKedr/kadrolov; release v0.1.0: EXE/DEB/DMG/APK,portable,checksum,отчёт."
+UX01,Всплывающая панель иконок под рамкой снимка,must,desktop,implemented_partially_verified,"Mac GUI: рамка, панель ниже выделения, стрелка/текст/SaveAs. QtTest11 сценариев: свойства,геометрия,accessibility,экспорт."
+UX02,Компактная иконная мини-панель стоп/пауза/продолжить,must,all,implemented_partially_verified,"Mac GUI: мини-панель таймер/пауза/продолжить/стоп,сохранениеMP4. Android эмулятор: управление через приложение; overlay требует отдельной проверки на устройстве."
 K01,Изменяемые раздельные горячие клавиши снимка/видео,must,desktop,implemented_partially_verified,Раздельные изменяемые сочетания реализованы. Mac UI показывает глобальную регистрацию; конфликт сохраняет прежние настройки. PrintScreen default Windows/Linux.
 A01,Автозапуск с возможностью отключения,must,all,implemented_partially_verified,Mac: переключатель создаёт/удаляет валидный LaunchAgent; возвращён OFF. Desktop login; Android boot notification без автозахвата.

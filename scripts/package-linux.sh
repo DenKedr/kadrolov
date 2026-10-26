@@ -6,7 +6,7 @@ build_dir=${1:-build}
 architecture=${2:-$(dpkg --print-architecture)}
 output_dir=${3:-dist}
 qt_major=${4:-6}
-version=${KADROLOV_VERSION:-0.1.0}
+version=${KADROLOV_VERSION:-0.1.1}
 repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 case "$architecture" in amd64|arm64|i386|armhf) ;; *) echo "Unsupported Debian architecture: $architecture" >&2; exit 2 ;; esac
 case "$qt_major" in 5|6) ;; *) echo "Qt major version must be 5 or 6" >&2; exit 2 ;; esac

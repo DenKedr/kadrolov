@@ -6,6 +6,7 @@
 #include "RecordingPanel.h"
 #include "Recovery.h"
 #include "RegionSelector.h"
+#include <QAction>
 #include <QApplication>
 #include <QCheckBox>
 #include <QCloseEvent>
@@ -33,6 +34,7 @@
 #include <QLineEdit>
 #include <QListWidget>
 #include <QMenu>
+#include <QMenuBar>
 #include <QMessageBox>
 #include <QPainter>
 #include <QProcess>
@@ -582,6 +584,12 @@ MainWindow::MainWindow(QWidget *p)
           });
   connect(recorder_, &Recorder::completed, this, [this](const QString &path) {
     rememberFile(path);
+    if (exitAfterSave_) {
+      exitAllowed_ = true;
+      savePreferences();
+      emit exitReady();
+      return;
+    }
     show();
     raise();
     tabs_->setCurrentIndex(2);
@@ -589,6 +597,7 @@ MainWindow::MainWindow(QWidget *p)
                              12000);
   });
   connect(recorder_, &Recorder::error, this, [this](const QString &message) {
+    exitAfterSave_ = false;
     show();
     raise();
     showCaptureError(message);
@@ -621,7 +630,7 @@ MainWindow::MainWindow(QWidget *p)
       raise();
       activateWindow();
     });
-    menu->addAction(QStringLiteral("Завершить"), this, &MainWindow::close);
+    menu->addAction(QStringLiteral("Выход"), this, &MainWindow::requestExit);
     tray->setContextMenu(menu);
     connect(tray, &QSystemTrayIcon::activated, this,
             [this](QSystemTrayIcon::ActivationReason reason) {
@@ -633,6 +642,14 @@ MainWindow::MainWindow(QWidget *p)
             });
     tray->show();
   }
+  auto *exit = menuBar()
+                   ->addMenu(QStringLiteral("Кадролов"))
+                   ->addAction(QStringLiteral("Выход"));
+  exit->setMenuRole(QAction::QuitRole);
+  connect(exit, &QAction::triggered, this, &MainWindow::requestExit);
+  dockActivationArmed_ =
+      !QCoreApplication::arguments().contains("--background");
+  qApp->installEventFilter(this);
   refreshHistory();
   updateSummary();
   QTimer::singleShot(0, this, &MainWindow::refreshMicrophones);
@@ -1093,25 +1110,63 @@ void MainWindow::updateSummary() {
           .arg(fps_->value())
           .arg(videoFolder_->text()));
 }
+void MainWindow::showExistingWindow() {
+  dockActivationArmed_ = true;
+  showNormal();
+  raise();
+  activateWindow();
+}
 void MainWindow::closeEvent(QCloseEvent *e) {
-  if (recorder_->state() == Recorder::Recording ||
-      recorder_->state() == Recorder::Paused ||
-      recorder_->state() == Recorder::Starting ||
-      recorder_->state() == Recorder::Finalizing) {
-    QMessageBox::information(
-        this, QStringLiteral("Запись ещё идёт"),
-        QStringLiteral(
-            "Остановите запись на мини-панели и дождитесь сохранения."));
-    panel_->show();
-    panel_->raise();
-    e->ignore();
+  savePreferences();
+  if (exitAllowed_ || qApp->isSavingSession()) {
+    if (qApp->isSavingSession() && recorder_->state() != Recorder::Idle &&
+        recorder_->state() != Recorder::Failed)
+      recorder_->stop();
+    QMainWindow::closeEvent(e);
+    return;
+  }
+  hide();
+  e->ignore();
+}
+bool MainWindow::eventFilter(QObject *object, QEvent *event) {
+  if (object == qApp && event->type() == QEvent::Quit && !exitAllowed_ &&
+      !qApp->isSavingSession()) {
+    requestExit();
+    return true;
+  }
+#ifdef Q_OS_MACOS
+  // Login launches may receive an initial activation despite --background.
+  // A later deactivate/activate cycle represents a deliberate Dock reopen.
+  if (object == qApp && event->type() == QEvent::ApplicationDeactivate)
+    dockActivationArmed_ = true;
+  if (object == qApp && event->type() == QEvent::ApplicationActivate &&
+      dockActivationArmed_ && !isVisible() && !QApplication::activeWindow())
+    showExistingWindow();
+#endif
+  return QMainWindow::eventFilter(object, event);
+}
+void MainWindow::requestExit() {
+  if (exitAfterSave_)
+    return;
+  const auto state = recorder_->state();
+  if (state != Recorder::Idle && state != Recorder::Failed) {
+    QMessageBox question(QMessageBox::Question,
+                         QStringLiteral("Завершить Кадролов?"),
+                         QStringLiteral("Остановить запись, сохранить видео и выйти?"),
+                         QMessageBox::Yes | QMessageBox::Cancel, this);
+    question.button(QMessageBox::Yes)->setText(QStringLiteral("Сохранить и выйти"));
+    question.button(QMessageBox::Cancel)->setText(QStringLiteral("Отмена"));
+    question.setDefaultButton(QMessageBox::Cancel);
+    if (question.exec() != QMessageBox::Yes)
+      return;
+    exitAfterSave_ = true;
+    if (state != Recorder::Finalizing)
+      recorder_->stop();
     return;
   }
   savePreferences();
-  panel_->close();
-  delete panel_;
-  QMainWindow::closeEvent(e);
-  qApp->quit();
+  exitAllowed_ = true;
+  emit exitReady();
 }
 
 void MainWindow::trimSelected() {
