@@ -3,10 +3,17 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+    inputs:
+      windows_only:
+        description: 'Run only Windows builds and lifecycle diagnostics'
+        type: boolean
+        required: false
+        default: false
 permissions:
   contents: read
 jobs:
   linux:
+    if: ${{ !inputs.windows_only }}
     strategy:
       fail-fast: false
       matrix:
@@ -43,6 +50,7 @@ jobs:
             kadrolov-linux-${{ matrix.arch }}.tar.gz
             dist/*.deb
   linux-legacy:
+    if: ${{ !inputs.windows_only }}
     strategy:
       fail-fast: false
       max-parallel: 2
@@ -112,6 +120,13 @@ jobs:
           cache: true
       - run: cmake -S . -B build -A ${{ matrix.cmakearch }} && cmake --build build --config Release -j2
       - run: ctest --test-dir build -C Release --output-on-failure
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-test-results-${{ matrix.arch }}
+          path: |
+            build/lifecycle-results.xml
+            build/Testing/Temporary/
       - name: Package portable application
         shell: pwsh
         run: |
@@ -148,6 +163,7 @@ jobs:
             kadrolov-windows-${{ matrix.arch }}.zip
             dist/*.exe
   macos:
+    if: ${{ !inputs.windows_only }}
     strategy:
       fail-fast: false
       matrix:
@@ -176,6 +192,7 @@ jobs:
             kadrolov-macos-${{ matrix.arch }}.zip
             kadrolov-macos-${{ matrix.arch }}.dmg
   android:
+    if: ${{ !inputs.windows_only }}
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -197,6 +214,7 @@ jobs:
           name: kadrolov-android-unsigned-release
           path: android/app/build/outputs/apk/release/*-unsigned.apk
   android-runtime:
+    if: ${{ !inputs.windows_only }}
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
