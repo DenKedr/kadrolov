@@ -120,10 +120,16 @@ jobs:
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
-      - run: brew install qtbase qtimageformats cmake ninja
-      - run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$(brew --prefix qtbase)" && cmake --build build -j2
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.3'
+          host: mac
+          arch: clang_64
+          modules: qtimageformats
+          cache: true
+      - run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0 -DCMAKE_OSX_ARCHITECTURES=${{ matrix.arch }} -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR" && cmake --build build -j2
       - run: QT_QPA_PLATFORM=offscreen ctest --test-dir build --output-on-failure && native/macos/tests/run.sh
-      - run: scripts/package-macos.sh build kadrolov-macos-${{ matrix.arch }}.zip
+      - run: QT_BASE_DIR="$QT_ROOT_DIR" scripts/package-macos.sh build kadrolov-macos-${{ matrix.arch }}.zip
       - uses: actions/upload-artifact@v4
         with:
           name: kadrolov-macos-${{ matrix.arch }}
