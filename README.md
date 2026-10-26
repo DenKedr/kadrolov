@@ -19,21 +19,23 @@
 
 ## Установка и запуск
 
-Готовые пакеты публикуются в [Releases](https://github.com/DenKedr/kadrolov/releases); текущие CI-сборки — в [Actions](https://github.com/DenKedr/kadrolov/actions).
+Установщики `.exe`, `.deb`, `.dmg` и подписанный `.apk`, а также portable-архивы публикуются в [Releases](https://github.com/DenKedr/kadrolov/releases); текущие CI-сборки — в [Actions](https://github.com/DenKedr/kadrolov/actions).
 
 ### macOS 13+
 
-Распакуйте ZIP и откройте `kadrolov.app`. В системных настройках разрешите запись экрана; микрофон/камера нужны только при включении соответствующей функции. Публичный пакет имеет ad-hoc подпись и пока не нотарифицирован Apple. Для локальных повторных сборок можно задать `KADROLOV_SIGN_IDENTITY` в скрипте упаковки: постоянная Apple Development identity сохраняет соответствие системного разрешения между сборками.
+Откройте DMG и перетащите `kadrolov.app` в «Программы», либо распакуйте ZIP. В системных настройках разрешите запись экрана; микрофон/камера нужны только при включении соответствующей функции. Публичный пакет имеет ad-hoc подпись и пока не нотарифицирован Apple. Для локальных повторных сборок можно задать `KADROLOV_SIGN_IDENTITY` в скрипте упаковки: постоянная Apple Development identity сохраняет соответствие системного разрешения между сборками.
 
 MP4 и локальный OCR работают на системных API. Для WebM/MKV и обрезки видео установите [FFmpeg](https://ffmpeg.org/download.html) (например, `brew install ffmpeg`). Круги кликов доступны с macOS 15.
 
 ### Windows 10/11
 
-Распакуйте portable ZIP целиком и запустите `kadrolov.exe`. Обычный MP4 записывает встроенный `kadrolov-capture.exe`: Media Foundation/GDI/WASAPI, без виртуального аудиодрайвера и FFmpeg. Камера также встроена в нативный модуль. Для WebM/MKV и обрезки установите [FFmpeg](https://ffmpeg.org/download.html), доступный через PATH или лежащий рядом с приложением. Его разрядность должна подходить Windows; текущие популярные сборки FFmpeg для x64 нельзя использовать на 32-bit Windows. `kadrolov-audio.exe` нужен только дополнительному FFmpeg backend.
+Запустите `kadrolov-windows-ARCH-setup.exe`: установка выполняется для текущего пользователя без администратора. Либо распакуйте portable ZIP целиком и запустите `kadrolov.exe`. Обычный MP4 записывает встроенный `kadrolov-capture.exe`: Media Foundation/GDI/WASAPI, без виртуального аудиодрайвера и FFmpeg. Камера также встроена в нативный модуль. Для WebM/MKV и обрезки установите [FFmpeg](https://ffmpeg.org/download.html), доступный через PATH или лежащий рядом с приложением. Его разрядность должна подходить Windows; текущие популярные сборки FFmpeg для x64 нельзя использовать на 32-bit Windows. `kadrolov-audio.exe` нужен только дополнительному FFmpeg backend.
 
 ### Linux
 
-Пакет зависит от Qt соответствующей ветки (Qt6 для x64/ARM64, Qt5 для legacy32), image-format plugins и FFmpeg. Для Ubuntu/Debian современные зависимости:
+DEB устанавливается командой `sudo apt install ./kadrolov_0.1.0_ARCH.deb`; в меню появится Кадролов. Архитектуры DEB: `amd64`, `arm64`, `i386`, `armhf`. Qt6-пакеты собраны на Ubuntu 24.04, Qt5 legacy — на Debian 12; зависимости проверяются пакетным менеджером.
+
+Portable-пакет зависит от Qt соответствующей ветки (Qt6 для x64/ARM64, Qt5 для legacy32), image-format plugins и FFmpeg. Для Ubuntu/Debian современные зависимости:
 
 ```sh
 sudo apt install libqt6widgets6 libqt6printsupport6 qt6-image-formats-plugins ffmpeg
@@ -43,7 +45,7 @@ Wayland дополнительно использует системные по�
 
 ### Android 10+
 
-Установите APK подходящего выпуска; debug APK предназначен для проверки, а не для магазина. Каждый захват начинается с системного согласия. Системный звук доступен только от приложений, разрешающих его захват. Плавающая мини-панель запрашивает отдельное разрешение «Поверх других приложений»; без него сохраняется управление в уведомлении и основном экране. Подробности: [Android README](android/README.md).
+Установите `kadrolov-android.apk` из выпуска — один APK содержит ARM32/ARM64/x86/x64 и подписан постоянным ключом Кадролова. Отдельные debug APK из Actions используются для CI. Каждый захват начинается с системного согласия. Системный звук доступен только от приложений, разрешающих его захват. Плавающая мини-панель запрашивает отдельное разрешение «Поверх других приложений»; без него сохраняется управление в уведомлении и основном экране. Подробности: [Android README](android/README.md).
 
 ## Сборка desktop
 
@@ -54,6 +56,8 @@ cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j2
 QT_QPA_PLATFORM=offscreen ctest --test-dir build --output-on-failure
 ```
+
+Публичные macOS-пакеты собираются с Qt 6.8.3 и deployment target 13.0 ([поддерживаемые версии Qt](https://doc.qt.io/qt-6.8/supported-platforms.html)). Новые Homebrew Qt могут требовать более свежую macOS; это нужно учитывать при самостоятельной сборке.
 
 На Mac с Homebrew добавьте `-DCMAKE_PREFIX_PATH="$(brew --prefix qtbase)"`. Нативный helper собирается автоматически. Запуск: `open build/kadrolov.app`; Linux: `build/kadrolov`. В Visual Studio используйте `-A x64`, `-A ARM64` или `-A Win32` и соответствующую Qt.
 
@@ -74,7 +78,7 @@ CI описывает x64/ARM64 Windows/Linux/macOS, x86 Windows/Linux, ARMv7 Li
 
 ## Проект
 
-[Описание](docs/superpowers/specs/2026-10-26-kadrolov-design.md), [UX](docs/ux.md), [план](docs/superpowers/plans/2026-10-26-kadrolov.md), [сторонние компоненты](THIRD_PARTY.md). MIT — для собственного кода; Qt, FFmpeg и OCR-компоненты сохраняют свои лицензии.
+[Описание](docs/superpowers/specs/2026-10-26-kadrolov-design.md), [UX](docs/ux.md), [план](docs/superpowers/plans/2026-10-26-kadrolov.md), [сторонние компоненты](THIRD_PARTY.md), [сборка установщиков](docs/installers.md). MIT — для собственного кода; Qt, FFmpeg и OCR-компоненты сохраняют свои лицензии.
 
 ## Горячие клавиши и автозапуск
 

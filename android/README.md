@@ -11,7 +11,30 @@ export ANDROID_HOME=/path/to/android-sdk
 ./gradlew --no-daemon :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
 ```
 
-Отладочный APK: `app/build/outputs/apk/debug/app-debug.apk`. Он подписан стандартным debug-ключом сборочной машины; production подпись и публикация в магазине отдельно.
+Отладочный APK: `app/build/outputs/apk/debug/app-debug.apk`. Он подписан debug-ключом конкретной сборочной машины и используется для CI/проверки. Ключи разных CI-запусков могут отличаться, поэтому такой APK не обеспечивает обновление установленного выпуска.
+
+### Установочный release APK
+
+Для публикуемого установщика используйте release-вариант и один постоянный ключ приложения с alias `kadrolov`. Приватный keystore и файл пароля хранятся отдельно от репозитория и архивов выпуска; для будущих обновлений нужны тот же ключ и увеличенный `versionCode`. Keystore и ключ используют одинаковый пароль. Скрипт не создаёт и не заменяет ключи.
+
+Из каталога `android/` соберите неподписанный вариант:
+
+```sh
+./gradlew --no-daemon --max-workers=2 :app:assembleRelease
+```
+
+Затем из корня репозитория укажите существующие защищённые файлы через переменные окружения:
+
+```sh
+export ANDROID_HOME=/path/to/android-sdk
+export KADROLOV_ANDROID_KEYSTORE=/private/path/kadrolov-release.p12
+export KADROLOV_ANDROID_PASSWORD_FILE=/private/path/kadrolov-release.password
+scripts/package-android.sh android/app/build/outputs/apk/release/app-release-unsigned.apk /path/to/new/Kadrolov-android.apk
+```
+
+Нужны JDK и Android build-tools 35.0.0; вместо `ANDROID_HOME` поддерживается `ANDROID_SDK_ROOT`. При необходимости версия инструментов задаётся `KADROLOV_ANDROID_BUILD_TOOLS_VERSION`. Пароль читается `apksigner` из файла, не передаётся открытым значением в командной строке и не выводится скриптом. Подписывание выполняется после `zipalign -P16`; готовый APK проходит проверку подписи и 16 KB выравнивания до публикации файла. Существующий выходной файл не перезаписывается.
+
+Release APK устанавливается обычным системным установщиком Android. Публикация в магазине — отдельный процесс; подпись APK сама по себе не подтверждает проверку захвата на физическом устройстве.
 
 В wrapper включены официальные Gradle8.9 wrapper scripts/JAR из `gradle/gradle` tag `v8.9.0`; Gradle дистрибутив загружается с services.gradle.org. AGP8.7.3, Kotlin2.0.21, Tesseract4Android4.9.0 (JitPack). Build cache и `local.properties` не входят в Git.
 

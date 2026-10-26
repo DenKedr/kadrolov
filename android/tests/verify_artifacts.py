@@ -38,7 +38,7 @@ assert all(t['failures'] == '0' and t['errors'] == '0' for t in tests)
 report = {
     'status': 'built_and_static_checked',
     'runtime_device_tested': False,
-    'apk': 'android/app/build/outputs/apk/debug/app-debug.apk',
+    'apk': apk.name,
     'apk_bytes': apk.stat().st_size,
     'apk_sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
     'abis': abis,
@@ -46,8 +46,8 @@ report = {
     'unit_tests': tests,
     'standalone_smoke_assertions': 12,
     'notes': [
-        'No emulator or physical device was used in this task',
-        'MediaProjection/audio/camera/EGL/overlay still require device testing',
+        'This script audits the APK only; emulator results are tracked in docs/verification.md',
+        'Physical device audio/camera/EGL/overlay testing is still required',
         'APK dependencies include all four native OCR ABIs and verified rus/eng models',
         'Boot receiver only prepares an optional shortcut notification; no automatic capture',
     ],

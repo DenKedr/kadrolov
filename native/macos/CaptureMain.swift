@@ -18,6 +18,24 @@ func emit(_ payload: [String: Any]) {
 }
 func hostSeconds() -> Double { CMClockGetTime(CMClockGetHostTimeClock()).seconds }
 
+func captureErrorDetails(_ error: Error, depth: Int = 0) -> [String: Any] {
+    let value = error as NSError
+    var result: [String: Any] = ["domain": value.domain, "code": value.code, "description": value.localizedDescription]
+    if depth < 3, let underlying = value.userInfo[NSUnderlyingErrorKey] as? Error {
+        result["underlying"] = captureErrorDetails(underlying, depth: depth + 1)
+    }
+    return result
+}
+
+func traceTiming(_ values: [String: Any]) {
+    guard ProcessInfo.processInfo.environment["KADROLOV_CAPTURE_TRACE_TIMING"] == "1",
+          let data = try? JSONSerialization.data(withJSONObject: values, options: [.sortedKeys]) else { return }
+    outputLock.lock()
+    FileHandle.standardError.write(data)
+    FileHandle.standardError.write(Data([10]))
+    outputLock.unlock()
+}
+
 @available(macOS 13.0, *)
 // Mutable recording state is confined to queue after prepare() finishes; teardown drains it.
 final class CaptureSession: NSObject, SCStreamOutput, SCStreamDelegate, AVCaptureVideoDataOutputSampleBufferDelegate, @unchecked Sendable {
@@ -41,6 +59,7 @@ final class CaptureSession: NSObject, SCStreamOutput, SCStreamDelegate, AVCaptur
     var outputWidth = 0, outputHeight = 0
     var frames = 0, audioSamples = 0, microphoneSamples = 0
     var stopping = false, fatalMessage: String?
+    var fatalErrorDetails: [String: Any]?
     var finish: (() -> Void)?
     private let completionLock = NSLock()
     private var didComplete = false
@@ -145,6 +164,9 @@ final class CaptureSession: NSObject, SCStreamOutput, SCStreamDelegate, AVCaptur
             AVVideoCodecKey: AVVideoCodecType.h264,
             AVVideoWidthKey: outputWidth, AVVideoHeightKey: outputHeight,
             AVVideoCompressionPropertiesKey: [AVVideoAverageBitRateKey: bitRate,
+                // Capture is a real-time stream; avoid encoder frame reordering latency.
+                // Raw sample duration/attachments are normalized separately in videoSample.
+                AVVideoAllowFrameReorderingKey: false,
                 AVVideoMaxKeyFrameIntervalKey: arguments.fps * 2,
                 AVVideoProfileLevelKey: AVVideoProfileLevelH264HighAutoLevel]
         ])
@@ -335,7 +357,7 @@ final class CaptureSession: NSObject, SCStreamOutput, SCStreamDelegate, AVCaptur
     func accept(_ sample: CMSampleBuffer, kind: String) {
         guard !stopping, fatalMessage == nil, CMSampleBufferIsValid(sample) else { return }
         guard let writer, writer.status == .writing else {
-            if let error = writer?.error { fail(error.localizedDescription) }
+            if let error = writer?.error { fail(error.localizedDescription, underlying: error, stage: "writer-state") }
             return
         }
         let input = kind == "video" ? video : (kind == "system" ? systemAudio : microphone)
@@ -346,15 +368,36 @@ final class CaptureSession: NSObject, SCStreamOutput, SCStreamDelegate, AVCaptur
             prepared = composed
         } else { prepared = sample }
         let sourceTime = CMSampleBufferGetPresentationTimeStamp(prepared).seconds
-        guard let mediaTime = timeline.map(sourceTime, track: kind), let offset = timeline.offset,
-              let retimed = Self.retime(prepared, subtracting: offset) else { return }
+        guard let mediaTime = timeline.map(sourceTime, track: kind), let offset = timeline.offset else { return }
+        let normalized = kind == "video"
+            ? Self.videoSample(prepared, at: mediaTime, fps: arguments.fps)
+            : Self.retime(prepared, subtracting: offset)
+        guard let retimed = normalized else { return }
+        func timeValue(_ value: CMTime) -> Any { value.isValid && value.seconds.isFinite ? value.seconds : NSNull() }
+        traceTiming(["trace": "sample", "kind": kind, "sourcePTS": sourceTime,
+            "sourceDTS": timeValue(CMSampleBufferGetDecodeTimeStamp(prepared)),
+            "sourceDuration": timeValue(CMSampleBufferGetDuration(prepared)), "mappedPTS": mediaTime,
+            "mappedDTS": timeValue(CMSampleBufferGetDecodeTimeStamp(retimed)), "frames": frames])
         if !input.append(retimed) {
-            fail(writer.error?.localizedDescription ?? "Ошибка записи дорожки \(kind).")
+            fail(writer.error?.localizedDescription ?? "Ошибка записи дорожки \(kind).", underlying: writer.error, stage: "append-" + kind)
             return
         }
         if kind == "video" { frames += 1; lastVideo = prepared; lastVideoTime = mediaTime }
         else if kind == "system" { audioSamples += 1 }
         else { microphoneSamples += 1 }
+    }
+
+    /// SCK screen samples can carry "ends previous duration" / output timing attachments.
+    /// Copying their timing is not safe for sparse screen changes or a repeated final frame.
+    /// Keep the pixel data/format, but give the encoder a clean raw-frame timing contract.
+    static func videoSample(_ source: CMSampleBuffer, at timestamp: Double, fps: Int) -> CMSampleBuffer? {
+        guard let pixel = CMSampleBufferGetImageBuffer(source), let format = CMSampleBufferGetFormatDescription(source) else { return nil }
+        var timing = CMSampleTimingInfo(duration: CMTime(value: 1, timescale: CMTimeScale(fps)),
+            presentationTimeStamp: CMTime(seconds: timestamp, preferredTimescale: 1_000_000_000), decodeTimeStamp: .invalid)
+        var result: CMSampleBuffer?
+        guard CMSampleBufferCreateReadyWithImageBuffer(allocator: kCFAllocatorDefault, imageBuffer: pixel,
+            formatDescription: format, sampleTiming: &timing, sampleBufferOut: &result) == noErr else { return nil }
+        return result
     }
 
     static func retime(_ sample: CMSampleBuffer, subtracting offset: Double) -> CMSampleBuffer? {
@@ -388,14 +431,20 @@ final class CaptureSession: NSObject, SCStreamOutput, SCStreamDelegate, AVCaptur
             emit(["event": "resumed"])
         }
     }
-    func fail(_ message: String) {
+    func fail(_ message: String, underlying: Error? = nil, stage: String = "capture") {
         guard fatalMessage == nil else { return }
         fatalMessage = message
-        emit(["event": "error", "message": message])
+        var event: [String: Any] = ["event": "error", "message": message, "stage": stage]
+        if let underlying {
+            let details = captureErrorDetails(underlying)
+            fatalErrorDetails = details
+            event["errorDetails"] = details
+        }
+        emit(event)
         Task { await self.stop() }
     }
     func stream(_ stream: SCStream, didStopWithError error: Error) {
-        queue.async { self.fail("Источник захвата остановлен: \(error.localizedDescription)") }
+        queue.async { self.fail("Источник захвата остановлен: \(error.localizedDescription)", underlying: error, stage: "stream") }
     }
 
     func stop() async {
@@ -422,7 +471,7 @@ final class CaptureSession: NSObject, SCStreamOutput, SCStreamDelegate, AVCaptur
                     let end = self.timeline.isPaused ? self.timeline.pausedAt! : endHostTime
                     if self.timeline.isPaused { self.timeline.resume(at: end) }
                     if let mapped = self.timeline.map(end, track: "video"), mapped > self.lastVideoTime,
-                       let frame = Self.retime(original, subtracting: CMSampleBufferGetPresentationTimeStamp(original).seconds - mapped) {
+                       let frame = Self.videoSample(original, at: mapped, fps: self.arguments.fps) {
                         if video.append(frame) { self.lastVideoTime = mapped }
                     }
                 }
@@ -456,7 +505,10 @@ final class CaptureSession: NSObject, SCStreamOutput, SCStreamDelegate, AVCaptur
                   "audioTracks": tracks, "duration": lastVideoTime, "systemAudioSamples": audioSamples,
                   "microphoneSamples": microphoneSamples, "cameraFrames": cameraFrames])
         } else {
-            emit(["event": "error", "message": fatalMessage ?? writer.error?.localizedDescription ?? "Не удалось завершить MP4.", "path": arguments.output])
+            var event: [String: Any] = ["event": "error", "message": fatalMessage ?? writer.error?.localizedDescription ?? "Не удалось завершить MP4.", "path": arguments.output, "stage": "finish"]
+            if let details = fatalErrorDetails { event["errorDetails"] = details }
+            else if let error = writer.error { event["errorDetails"] = captureErrorDetails(error) }
+            emit(event)
         }
         finishOnce()
     }
@@ -575,7 +627,7 @@ struct CaptureMain {
                         startInput(current)
                     } catch {
                         current.writer?.cancelWriting()
-                        emit(["event": "error", "message": error.localizedDescription])
+                        emit(["event": "error", "message": error.localizedDescription, "errorDetails": captureErrorDetails(error)])
                         exitCode = 1
                         current.finishOnce()
                     }
@@ -584,7 +636,7 @@ struct CaptureMain {
             if current.fatalMessage != nil || current.frames == 0 { exitCode = 1 }
             exit(exitCode)
         } catch {
-            emit(["event": "error", "message": error.localizedDescription])
+            emit(["event": "error", "message": error.localizedDescription, "errorDetails": captureErrorDetails(error)])
             exit(1)
         }
     }

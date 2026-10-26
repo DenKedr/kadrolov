@@ -1,0 +1,14 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Кадролов
+Name[en]=Kadrolov
+GenericName=Снимки и запись экрана
+Comment=Выберите область, добавьте пометки и сохраните снимок или видео локально
+Exec=kadrolov
+Icon=kadrolov
+Terminal=false
+Categories=Graphics;AudioVideo;Recorder;
+StartupNotify=true
+StartupWMClass=Кадролов
+Keywords=скриншот;снимок;экран;запись;видео;screenshot;screen;record;

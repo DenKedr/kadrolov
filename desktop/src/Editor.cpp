@@ -571,8 +571,12 @@ Editor::Editor(const QImage &image, QWidget *parent)
     group->addAction(a);
     if (pair.second == EditorCanvas::Select)
       a->setChecked(true);
-    connect(a, &QAction::triggered, this,
-            [this, pair] { setTool(pair.second); });
+    // Accessibility can change the checked state without triggering the action.
+    // Keep canvas routing tied to the state shown by every toolbar instance.
+    connect(a, &QAction::toggled, this, [this, pair](bool checked) {
+      if (checked)
+        setTool(pair.second);
+    });
   }
   addToolBarBreak();
   auto *props = addToolBar(QStringLiteral("Свойства"));
@@ -826,9 +830,24 @@ QImage Editor::flattenedImage() const {
   QImage out(size, QImage::Format_ARGB32_Premultiplied);
   out.fill(Qt::transparent);
   auto selected = scene_->selectedItems();
+  auto *focus = scene_->focusItem();
+  struct TextState {
+    QGraphicsTextItem *item;
+    QTextCursor cursor;
+    Qt::TextInteractionFlags interaction;
+  };
+  QList<TextState> texts;
+  for (auto *item : scene_->items()) {
+    if (auto *text = qgraphicsitem_cast<QGraphicsTextItem *>(item)) {
+      texts.append({text, text->textCursor(), text->textInteractionFlags()});
+      auto cursor = text->textCursor();
+      cursor.clearSelection();
+      text->setTextCursor(cursor);
+      text->setTextInteractionFlags(Qt::NoTextInteraction);
+    }
+  }
   for (auto *i : selected)
     i->setSelected(false);
-  auto *focus = scene_->focusItem();
   if (focus)
     focus->clearFocus();
   QPainter p(&out);
@@ -836,6 +855,10 @@ QImage Editor::flattenedImage() const {
                    QPainter::SmoothPixmapTransform);
   scene_->render(&p, QRectF(QPointF(0, 0), size), r);
   p.end();
+  for (const auto &text : texts) {
+    text.item->setTextInteractionFlags(text.interaction);
+    text.item->setTextCursor(text.cursor);
+  }
   for (auto *i : selected)
     i->setSelected(true);
   if (focus)
@@ -1266,8 +1289,10 @@ void Editor::positionOverlayToolbar() {
     return;
   }
   overlayToolbar_->adjustSize();
-  auto bottom = canvas_->mapFromScene(selection.bottomLeft());
-  auto top = canvas_->mapFromScene(selection.topLeft());
+  auto bottom = canvas_->viewport()->mapTo(
+      this, canvas_->mapFromScene(selection.bottomLeft()));
+  auto top = canvas_->viewport()->mapTo(
+      this, canvas_->mapFromScene(selection.topLeft()));
   int x =
       qBound(8, bottom.x(), qMax(8, width() - overlayToolbar_->width() - 8));
   int y = bottom.y() + 9;

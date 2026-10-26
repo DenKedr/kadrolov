@@ -83,13 +83,13 @@ QString Recorder::capabilityNote(){
 #ifdef Q_OS_MACOS
     return QStringLiteral("Для записи разрешите доступ к экрану в настройках macOS. Подсветка кликов: macOS 15 и новее.");
 #elif defined(Q_OS_WIN)
-    return QStringLiteral("Захват Windows через GDI. Системный звук — WASAPI; подсветка кликов пока недоступна.");
+    return QStringLiteral("Захват Windows через GDI. Системный звук — WASAPI; курсор и круги кликов включаются отдельно.");
 #else
-    return qEnvironmentVariableIsSet("WAYLAND_DISPLAY") ? QStringLiteral("Wayland: источник выбирается в системном диалоге. Подсветка кликов зависит от окружения.") : QStringLiteral("X11: запись через FFmpeg, звук через PulseAudio/PipeWire. Подсветка кликов пока недоступна.");
+    return qEnvironmentVariableIsSet("WAYLAND_DISPLAY") ? QStringLiteral("Wayland: источник выбирается в системном диалоге. Глобальные круги кликов недоступны.") : QStringLiteral("X11: запись через FFmpeg, звук через PulseAudio/PipeWire. Доступность кругов кликов зависит от сборки X11.");
 #endif
 }
 void Recorder::setState(State s){if(state_==s)return;state_=s;if(clickOverlay_){if(s==Recording&&options_.highlightClicks&&!helper_){clickOverlay_->setCaptureRect(options_.region);clickOverlay_->start();}else clickOverlay_->stop();}emit stateChanged(s);}
-void Recorder::fail(const QString &message){ticker_.stop();
+void Recorder::fail(const QString &message){if(state_==Failed)return;ticker_.stop();
     if(process_.state()!=QProcess::NotRunning){process_.write(helper_?"{\"command\":\"stop\"}\n":"q\n");const auto pid=process_.processId();QTimer::singleShot(3000,this,[this,pid]{if(pid&&process_.processId()==pid&&process_.state()!=QProcess::NotRunning)process_.terminate();});}
     for(auto *p:audioProcesses_)if(p->state()!=QProcess::NotRunning)p->write("stop\n");
     setState(Failed);emit error(message+QStringLiteral("\nНезавершённые файлы: ")+temporaryDir_);}

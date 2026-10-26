@@ -1,7 +1,7 @@
 {
   "status": "built_and_static_checked",
   "runtime_device_tested": false,
-  "apk": "android/app/build/outputs/apk/debug/app-debug.apk",
+  "apk": "app-debug.apk",
   "apk_bytes": 35540911,
   "apk_sha256": "7486e3a94e2b92de16b4f51126cab16fc47b410411f734f411f256c9eb33852f",
   "abis": [
@@ -31,8 +31,8 @@
   ],
   "standalone_smoke_assertions": 12,
   "notes": [
-    "No emulator or physical device was used in this task",
-    "MediaProjection/audio/camera/EGL/overlay still require device testing",
+    "This script audits the APK only; emulator results are tracked in docs/verification.md",
+    "Physical device audio/camera/EGL/overlay testing is still required",
     "APK dependencies include all four native OCR ABIs and verified rus/eng models",
     "Boot receiver only prepares an optional shortcut notification; no automatic capture"
   ]
