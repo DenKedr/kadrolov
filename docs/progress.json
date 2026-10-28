@@ -1,17 +1,21 @@
 {
-  "status": "published_pre_release",
-  "github": "https://github.com/DenKedr/kadrolov/releases/tag/v0.1.1",
-  "current_public_release": "0.1.1",
-  "desktop": "Mac M1 GUI/background/autostart/light verified; all desktop architectures3CTest suites pass, lifecycle8 cases.",
+  "status": "published_windows_theme_patch",
+  "github": "https://github.com/DenKedr/kadrolov/releases/tag/v0.1.2",
+  "current_public_release": {
+    "windows": "0.1.2",
+    "linux_macos_android": "0.1.1"
+  },
+  "desktop": "Shared source dark-theme fix; local MacARM64 Qt6 3CTest suites passed. Other platform published binaries remain0.1.1.",
   "android": "Signed4ABI release0.1.1/code2;6unit/lint passed; API35 emulator2/2 tests including Activity destruction/background recording.",
-  "windows": "EXE x64/x86/ARM64 build/test/install/uninstall passed and published.",
+  "windows": "0.1.2 EXE3/ZIP3 published; dark palette over light Windows fixed, native Qt renders checked for4tabs and theme transitions.3CTest suites,9lifecycle cases, install/uninstall passed x64/x86/ARM64.",
   "linux": "DEB amd64/arm64/i386/armhf build/test/install/remove passed in Debian12 and published.",
   "remaining": [
     "Physical Windows/Linux/Android and macOS Intel/13/14 capture tests",
     "Remaining partial features are tracked in features.csv"
   ],
-  "source_commit": "5bf24723df9dbd0d01551f1caceb50fa436917e9",
-  "ci": "https://github.com/DenKedr/kadrolov/actions/runs/40412804523",
-  "ci_jobs_passed": 11,
-  "published_assets": 23
+  "source_commit": "e153c609e79241874cde19015abb45131ea1939d",
+  "ci": "https://github.com/DenKedr/kadrolov/actions/runs/40717503752",
+  "ci_jobs_passed": 3,
+  "published_assets": 9,
+  "previous_all_platform_source_commit": "5bf24723df9dbd0d01551f1caceb50fa436917e9"
 }

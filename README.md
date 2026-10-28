@@ -15,7 +15,7 @@
 - Локальная история, изменяемые горячие клавиши и трей на desktop, автозапуск с переключателем; локальный OCR русского/английского текста; обрезка сохранённого видео.
 - macOS: ScreenCaptureKit, Vision OCR и нативный MP4 без дополнительных кодировщиков. Windows: GDI/WASAPI; Linux: X11 или Wayland portal/PipeWire/GStreamer. Android: MediaProjection/MediaCodec, настоящий AudioPlaybackCapture.
 
-**Предварительный выпуск [0.1.1](https://github.com/DenKedr/kadrolov/releases/tag/v0.1.1).** Сборка и работа на устройстве — разные проверки. Точные результаты и известные ограничения находятся в [матрице функций](docs/features.csv) и [отчёте проверки](docs/verification.md). Наличие пункта в исходниках не означает испытание на каждой ОС.
+**Windows: [исправление темы 0.1.2](https://github.com/DenKedr/kadrolov/releases/tag/v0.1.2). Linux/macOS/Android: [предварительный выпуск 0.1.1](https://github.com/DenKedr/kadrolov/releases/tag/v0.1.1).** Сборка и работа на устройстве — разные проверки. Точные результаты и известные ограничения находятся в [матрице функций](docs/features.csv) и [отчёте проверки](docs/verification.md). Наличие пункта в исходниках не означает испытание на каждой ОС.
 
 ## Установка и запуск
 
