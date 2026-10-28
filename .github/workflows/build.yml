@@ -126,6 +126,7 @@ jobs:
           name: windows-test-results-${{ matrix.arch }}
           path: |
             build/lifecycle-results.xml
+            build/theme-screenshots/
             build/Testing/Temporary/
       - name: Package portable application
         shell: pwsh
