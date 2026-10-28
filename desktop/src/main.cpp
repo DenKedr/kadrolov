@@ -12,7 +12,7 @@ int main(int argc, char **argv) {
   app.setApplicationName(QStringLiteral("Кадролов"));
   app.setOrganizationName(QStringLiteral("Kadrolov"));
   app.setOrganizationDomain(QStringLiteral("kadrolov.local"));
-  app.setApplicationVersion("0.1.1");
+  app.setApplicationVersion("0.1.2");
   app.setWindowIcon(QIcon(QStringLiteral(":/icons/kadrolov.png")));
   app.setStyle(QStyleFactory::create("Fusion"));
   app.setFont(QFontDatabase::systemFont(QFontDatabase::GeneralFont));

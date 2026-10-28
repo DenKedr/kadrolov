@@ -501,7 +501,29 @@ MainWindow::MainWindow(QWidget *p)
             muted = dark ? "#B3B7C2" : "#555F6E",
             border = dark ? "#454A55" : "#ABB3BF";
     QPalette palette = systemPalette;
-    if (!dark) {
+    if (dark) {
+      palette.setColor(QPalette::Window, QColor(bg));
+      palette.setColor(QPalette::WindowText, QColor(text));
+      palette.setColor(QPalette::Base, QColor(surface));
+      palette.setColor(QPalette::AlternateBase, QColor(bg));
+      palette.setColor(QPalette::Text, QColor(text));
+      palette.setColor(QPalette::Button, QColor(surface));
+      palette.setColor(QPalette::ButtonText, QColor(text));
+      palette.setColor(QPalette::Light, QColor("#626977"));
+      palette.setColor(QPalette::Midlight, QColor("#454A55"));
+      palette.setColor(QPalette::Mid, QColor("#454A55"));
+      palette.setColor(QPalette::Dark, QColor("#14161A"));
+      palette.setColor(QPalette::Shadow, QColor("#0C0D10"));
+      palette.setColor(QPalette::ToolTipBase, QColor(surface));
+      palette.setColor(QPalette::ToolTipText, QColor(text));
+      palette.setColor(QPalette::Highlight, QColor("#663820"));
+      palette.setColor(QPalette::HighlightedText, QColor(text));
+      palette.setColor(QPalette::Disabled, QPalette::Text, QColor("#969EAD"));
+      palette.setColor(QPalette::Disabled, QPalette::WindowText,
+                       QColor("#969EAD"));
+      palette.setColor(QPalette::Disabled, QPalette::ButtonText,
+                       QColor("#969EAD"));
+    } else {
       palette.setColor(QPalette::Window, QColor(bg));
       palette.setColor(QPalette::WindowText, QColor(text));
       palette.setColor(QPalette::Base, QColor(surface));
@@ -552,6 +574,55 @@ MainWindow::MainWindow(QWidget *p)
             "QToolButton:checked{background:#C2410C;color:white;} "
             "QLabel{background:transparent;}")
             .arg(text, bg, surface, muted, border));
+    // Scroll viewports, tab pages and native menus must not inherit the OS
+    // palette: the application theme can deliberately differ from the system.
+    qApp->setStyleSheet(
+        qApp->styleSheet() +
+        QString("QScrollArea,QScrollArea>QWidget>QWidget,QStackedWidget{"
+                "background:%1;} "
+                "QMenuBar,QMenu{background:%2;color:%3;} "
+                "QComboBox QAbstractItemView{background:%2;color:%3;border:1px "
+                "solid %4;} "
+                "QKeySequenceEdit,QDoubleSpinBox{background:%2;color:%3;border:"
+                "1px solid %4;border-radius:6px;padding:7px;} ")
+            .arg(bg, surface, text, border));
+    if (dark)
+      qApp->setStyleSheet(
+          qApp->styleSheet() +
+          QStringLiteral(
+              "QMenu::item:selected,QMenuBar::item:selected,QListWidget::item:"
+              "selected{background:#663820;color:#F4F4F5;} "
+              "QLineEdit,QSpinBox,QComboBox "
+              "QAbstractItemView{selection-background-color:#663820;selection-"
+              "color:#F4F4F5;} "
+              "QComboBox:focus,QLineEdit:focus,QSpinBox:focus,QKeySequenceEdit:"
+              "focus{border:2px solid #B3B7C2;} "
+              "QComboBox{padding-right:30px;} "
+              "QComboBox::drop-down{width:24px;border-left:1px solid #454A55;} "
+              "QComboBox::down-arrow{image:url(:/icons/"
+              "dark-chevron-down.xpm);width:12px;height:8px;} "
+              "QCheckBox::indicator{width:18px;height:18px;border:1px solid "
+              "#969EAD;border-radius:4px;background:#24272E;} "
+              "QCheckBox::indicator:hover{border:1px solid "
+              "#F4F4F5;background:#353A45;} "
+              "QCheckBox::indicator:checked{background:#C2410C;border:1px "
+              "solid #F0986F;image:url(:/icons/light-check.xpm);} "
+              "QComboBox:disabled,QLineEdit:disabled,QSpinBox:disabled,"
+              "QPushButton:disabled,QPushButton#primary:disabled{background:#"
+              "292D35;color:#969EAD;border:1px solid #454A55;} "
+              "QCheckBox:disabled{color:#969EAD;} "
+              "QCheckBox::indicator:disabled{background:#292D35;border:1px "
+              "solid #626977;} "
+              "QCheckBox::indicator:checked:disabled{background:#626977;image:"
+              "url(:/icons/light-check.xpm);} "
+              "QSpinBox::up-button,QSpinBox::down-button{width:22px;border-"
+              "left:1px solid #454A55;background:#353A45;} "
+              "QSpinBox::up-arrow{image:url(:/icons/"
+              "dark-chevron-up.xpm);width:10px;height:6px;} "
+              "QSpinBox::down-arrow{image:url(:/icons/"
+              "dark-chevron-down.xpm);width:10px;height:6px;} "
+              "QToolTip{background:#24272E;color:#F4F4F5;border:1px solid "
+              "#626977;}"));
     if (!dark)
       qApp->setStyleSheet(
           qApp->styleSheet() +

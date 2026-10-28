@@ -2,10 +2,21 @@
 #include "MainWindow.h"
 #include <QAbstractButton>
 #include <QApplication>
+#include <QCheckBox>
+#include <QComboBox>
+#include <QDir>
+#include <QLabel>
+#include <QMenu>
+#include <QMenuBar>
 #include <QMessageBox>
 #include <QProcess>
+#include <QScrollArea>
+#include <QSettings>
 #include <QSignalSpy>
 #include <QStandardPaths>
+#include <QStyleFactory>
+#include <QStyleOptionButton>
+#include <QTabWidget>
 #include <QUuid>
 #include <QtTest>
 class LifecycleTest : public QObject {
@@ -13,8 +24,119 @@ class LifecycleTest : public QObject {
 private slots:
   void initTestCase() {
     QStandardPaths::setTestModeEnabled(true);
+    qApp->setStyle(QStyleFactory::create("Fusion"));
     qApp->setQuitOnLastWindowClosed(false);
     qApp->setApplicationName("KadrolovLifecycleTest");
+  }
+  void themesRenderConsistentlyOverLightSystemPalette() {
+    const auto originalPalette = qApp->palette();
+    const auto originalStyleSheet = qApp->styleSheet();
+    qApp->setStyleSheet({});
+    QPalette light = qApp->style()->standardPalette();
+    light.setColor(QPalette::Window, Qt::white);
+    light.setColor(QPalette::Base, Qt::white);
+    light.setColor(QPalette::WindowText, Qt::black);
+    light.setColor(QPalette::Text, Qt::black);
+    qApp->setPalette(light);
+    QSettings settings;
+    settings.clear();
+    settings.setValue("imageFolder",
+                      QDir::tempPath() + "/KadrolovThemeTest/Pictures");
+    settings.setValue("videoFolder",
+                      QDir::tempPath() + "/KadrolovThemeTest/Movies");
+    settings.setValue("themeIndex", 1);
+    bool darkSurfaces = true, lightSurfaces = true;
+    const QString output = QDir::currentPath() + "/theme-screenshots";
+    QVERIFY(QDir().mkpath(output));
+    {
+      MainWindow window;
+      window.resize(1040, 820);
+      window.show();
+      auto *tabs = window.findChild<QTabWidget *>();
+      QVERIFY(tabs);
+      QComboBox *theme = nullptr;
+      for (auto *combo : window.findChildren<QComboBox *>())
+        if (combo->findData("dark") >= 0 && combo->findData("light") >= 0)
+          theme = combo;
+      QVERIFY(theme);
+      auto snapshot = [&](const QString &name, bool dark) {
+        QApplication::processEvents();
+        if (!window.grab().save(output + "/" + name + ".png"))
+          return false;
+        auto *scroll = qobject_cast<QScrollArea *>(tabs->currentWidget());
+        QWidget *surface = scroll ? scroll->viewport() : tabs->currentWidget();
+        auto image = surface->grab().toImage();
+        const QColor pixel =
+            image.pixelColor(image.width() - 3, image.height() - 3);
+        return dark ? pixel.lightness() < 90 : pixel.lightness() > 190;
+      };
+      theme->setCurrentIndex(theme->findData("dark"));
+      for (int tab = 0; tab < tabs->count(); ++tab) {
+        tabs->setCurrentIndex(tab);
+        darkSurfaces &= snapshot(QStringLiteral("dark-tab-%1").arg(tab), true);
+      }
+      darkSurfaces &= qApp->palette().color(QPalette::Window).lightness() < 90;
+      darkSurfaces &= qApp->palette().color(QPalette::Base).lightness() < 90;
+      darkSurfaces &=
+          qApp->palette().color(QPalette::WindowText).lightness() > 170;
+      darkSurfaces &= qApp->palette()
+                          .color(QPalette::Disabled, QPalette::Text)
+                          .lightness() > 90;
+      // Exercise native control glyphs against the app palette, independently
+      // of the user's connected devices or checkbox preferences.
+      QComboBox combo;
+      combo.addItem(QStringLiteral("Источник"));
+      combo.resize(180, 36);
+      combo.ensurePolished();
+      auto comboImage = combo.grab().toImage();
+      const qreal ratio = comboImage.devicePixelRatio();
+      int arrowPixels = 0;
+      for (int y = int(8 * ratio); y < int(28 * ratio); ++y)
+        for (int x = int(158 * ratio); x < int(176 * ratio); ++x)
+          if (comboImage.pixelColor(x, y).lightness() > 140)
+            ++arrowPixels;
+      darkSurfaces &= arrowPixels > 4;
+      QCheckBox checkbox(QStringLiteral("Курсор"));
+      checkbox.resize(180, 32);
+      checkbox.ensurePolished();
+      QStyleOptionButton option;
+      option.initFrom(&checkbox);
+      auto indicator = checkbox.style()->subElementRect(
+          QStyle::SE_CheckBoxIndicator, &option, &checkbox);
+      auto checkImage = checkbox.grab().toImage();
+      auto center = indicator.center() * checkImage.devicePixelRatio();
+      darkSurfaces &= checkImage.pixelColor(center).lightness() < 90;
+      checkbox.setChecked(true);
+      auto checkedImage = checkbox.grab().toImage();
+      darkSurfaces &= checkedImage != checkImage;
+      auto barImage = window.menuBar()->grab().toImage();
+      darkSurfaces &=
+          barImage.pixelColor(barImage.width() - 3, barImage.height() - 3)
+              .lightness() < 90;
+      QMenu menu;
+      menu.addAction(QStringLiteral("Проверка меню"));
+      menu.ensurePolished();
+      menu.adjustSize();
+      auto menuImage = menu.grab().toImage();
+      darkSurfaces &=
+          menuImage.pixelColor(menuImage.width() - 3, menuImage.height() - 3)
+              .lightness() < 90;
+      theme->setCurrentIndex(theme->findData("light"));
+      tabs->setCurrentIndex(3);
+      lightSurfaces &= snapshot("light-settings-after-dark", false);
+      lightSurfaces &= qApp->palette().color(QPalette::Text).lightness() < 90;
+      theme->setCurrentIndex(theme->findData("dark"));
+      darkSurfaces &= snapshot("dark-settings-after-light", true);
+      theme->setCurrentIndex(theme->findData("light"));
+      lightSurfaces &= snapshot("light-settings-final", false);
+      window.hide();
+    }
+    qApp->setPalette(originalPalette);
+    qApp->setStyleSheet(originalStyleSheet);
+    QVERIFY2(darkSurfaces, "Dark surfaces, menus and text must stay dark/light "
+                           "over a light OS palette");
+    QVERIFY2(lightSurfaces,
+             "Light surfaces and text must survive repeated theme switching");
   }
   void secondaryRaisesPrimaryButBackgroundDoesNot() {
     const QString id =
